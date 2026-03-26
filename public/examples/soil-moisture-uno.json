@@ -1,0 +1,80 @@
+{
+  "version": 1,
+  "projectName": "Example: Soil moisture (analog)",
+  "boardId": "arduino_uno",
+  "description": "FC-28-style analog output → Uno A0 (block APIN 0 maps to A0). Prints raw 0–1023 every 1 s; calibrate dry vs wet in your lesson.",
+  "blockly": {
+    "blocks": {
+      "languageVersion": 0,
+      "blocks": [
+        {
+          "type": "board_when_starts",
+          "id": "]Cvtae,{[%Cx/yfmiwMz",
+          "x": 20,
+          "y": 20,
+          "next": {
+            "block": {
+              "type": "comm_serial_begin",
+              "id": "#*d9ph0{aixJ1=e[D~rW",
+              "fields": {
+                "BAUD": 9600
+              },
+              "next": {
+                "block": {
+                  "type": "hw_forever",
+                  "id": "y)8`K):[v+cb1zV(VvVF",
+                  "inputs": {
+                    "DO": {
+                      "block": {
+                        "type": "comm_serial_print",
+                        "id": "Cyyl321+}dWqeYXpn6v6",
+                        "inputs": {
+                          "VAL": {
+                            "block": {
+                              "type": "text",
+                              "id": "?c++b@O?d74:B~.2vN:V",
+                              "fields": {
+                                "TEXT": "Soil moisture raw: "
+                              }
+                            }
+                          }
+                        },
+                        "next": {
+                          "block": {
+                            "type": "comm_serial_println",
+                            "id": "Y*i.J.D*g~y3e#}MAPk3",
+                            "inputs": {
+                              "VAL": {
+                                "block": {
+                                  "type": "sensor_analog_mblock",
+                                  "id": "t.-fuhmV=u*x+a4h3f/-",
+                                  "fields": {
+                                    "ASTYPE": "SOIL",
+                                    "APIN": 0
+                                  }
+                                }
+                              }
+                            },
+                            "next": {
+                              "block": {
+                                "type": "hw_wait",
+                                "id": ".EC!gYZTH]dJq8obNxMm",
+                                "fields": {
+                                  "MS": 1000
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

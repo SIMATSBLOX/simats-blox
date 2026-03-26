@@ -1,0 +1,79 @@
+{
+  "version": 1,
+  "projectName": "Example: LM35 temperature (raw ADC)",
+  "boardId": "arduino_uno",
+  "description": "LM35 Vout → analog pin A0. Prints 0–1023 raw analogRead every 500 ms. In class: convert to voltage then °C (≈ 10 mV/°C for classic LM35).",
+  "blockly": {
+    "blocks": {
+      "languageVersion": 0,
+      "blocks": [
+        {
+          "type": "board_when_starts",
+          "id": "{~s9`t]HV-(,#Z8EicL~",
+          "x": 20,
+          "y": 20,
+          "next": {
+            "block": {
+              "type": "comm_serial_begin",
+              "id": "YCWyy@?KC=?h9*w6s$]L",
+              "fields": {
+                "BAUD": 9600
+              },
+              "next": {
+                "block": {
+                  "type": "hw_forever",
+                  "id": "U11A`/Oc4a%-8qij2ex=",
+                  "inputs": {
+                    "DO": {
+                      "block": {
+                        "type": "comm_serial_print",
+                        "id": "M9_aJAZcD/btMlvqShm}",
+                        "inputs": {
+                          "VAL": {
+                            "block": {
+                              "type": "text",
+                              "id": "{bWHHiYojU4j59q4Y:n3",
+                              "fields": {
+                                "TEXT": "LM35 raw: "
+                              }
+                            }
+                          }
+                        },
+                        "next": {
+                          "block": {
+                            "type": "comm_serial_println",
+                            "id": "*2ukZ(_0XfQ][cSPTWlV",
+                            "inputs": {
+                              "VAL": {
+                                "block": {
+                                  "type": "board_analog_read",
+                                  "id": "{h?(^7~Ci+e]ufQc;fUC",
+                                  "fields": {
+                                    "APIN": "A0"
+                                  }
+                                }
+                              }
+                            },
+                            "next": {
+                              "block": {
+                                "type": "hw_wait",
+                                "id": "Hc4dOZXEPFQ+RQ}Hc~Y{",
+                                "fields": {
+                                  "MS": 500
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

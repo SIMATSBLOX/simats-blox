@@ -1,0 +1,97 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body,
+#root {
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  @apply bg-studio-bg text-slate-100 antialiased;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+/* Blockly flyout + workspace in studio chrome */
+.blocklyToolboxDiv {
+  background-color: #2a2f36 !important;
+  border-right: 1px solid #353a42 !important;
+}
+
+.blocklyFlyoutBackground {
+  fill: #262b32 !important;
+  fill-opacity: 1 !important;
+}
+
+.blocklyMainBackground {
+  fill: #1e2228 !important;
+}
+
+.blocklyScrollbarHandle {
+  fill: #4a5160 !important;
+}
+
+/* Studio workspace: smaller, lighter trash + balanced zoom (see workspaceCompactControls.js) */
+.blockly-studio-host .blockly-studio-control-wrap--trash {
+  transform: scale(0.78);
+  transform-origin: right bottom;
+  transform-box: fill-box;
+}
+
+.blockly-studio-host .blockly-studio-control-wrap--zoom {
+  transform: scale(0.8);
+  transform-origin: right top;
+  transform-box: fill-box;
+}
+
+.blockly-studio-host .blockly-studio-control-wrap--trash .blocklyTrash {
+  opacity: 0.62;
+  transition: opacity 0.15s ease;
+}
+
+.blockly-studio-host .blockly-studio-control-wrap--trash .blocklyTrash:hover {
+  opacity: 0.9;
+}
+
+.blockly-studio-host .blocklyZoom > image {
+  opacity: 0.3 !important;
+}
+
+.blockly-studio-host .blocklyZoom:hover > image {
+  opacity: 0.48 !important;
+}
+
+.blockly-studio-host .blocklyZoom:active > image {
+  opacity: 0.64 !important;
+}
+
+/* Flyout section headers — clearer scan lines (block bodies sized by Zelos + theme) */
+.blocklyFlyoutLabelText {
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.05em !important;
+  fill: #b8c0cc !important;
+}
+
+.blocklyFlyout .blocklyTreeRow {
+  min-height: 1.05rem;
+}
+
+.menu-item {
+  @apply block w-full px-3 py-1.5 text-left text-xs text-slate-200 hover:bg-white/10;
+}
+
+/* Compact flyout beside workspace (mBlock-style density) */
+.blockly-studio-host .blocklyToolboxDiv {
+  max-width: 220px;
+}
+
+/* Core string `text` block: chip-like input (quotes removed via textLiteralBlockPresentation.js).
+   Do not change SVG text font-size here — Blockly measures width with renderer constants. */
+.blockly-studio-host .hw-block-text-literal .blocklyEditableText > rect {
+  rx: 6px;
+  ry: 6px;
+}

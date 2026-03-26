@@ -1,0 +1,75 @@
+{
+  "version": 1,
+  "projectName": "Example: Blink LED",
+  "boardId": "esp32",
+  "description": "Toggles GPIO2 HIGH/LOW every 500 ms (many DevKit boards use GPIO2 for the onboard LED; use another pin if yours differs). MicroPython preview.",
+  "blockly": {
+    "blocks": {
+      "languageVersion": 0,
+      "blocks": [
+        {
+          "type": "esp32_when_starts",
+          "id": "$0}dJ!Hp{f0aS%%hbIM:",
+          "x": 20,
+          "y": 20,
+          "next": {
+            "block": {
+              "type": "board_pin_mode",
+              "id": "!dg)Psa;J(J=0Mu-g#a}",
+              "fields": {
+                "DPIN": 2,
+                "MODE": "OUTPUT"
+              },
+              "next": {
+                "block": {
+                  "type": "hw_forever",
+                  "id": "6e^|#Wf2%jc4j2Q%cl*~",
+                  "inputs": {
+                    "DO": {
+                      "block": {
+                        "type": "board_digital_write",
+                        "id": "7ThkK;t.;**JW(OsdSb8",
+                        "fields": {
+                          "DPIN": 2,
+                          "LEVEL": "HIGH"
+                        },
+                        "next": {
+                          "block": {
+                            "type": "hw_wait",
+                            "id": "`w]-ovFlt||n~H~3y=Z9",
+                            "fields": {
+                              "MS": 500
+                            },
+                            "next": {
+                              "block": {
+                                "type": "board_digital_write",
+                                "id": "#W,LCNXs72;Sg|_#*?/f",
+                                "fields": {
+                                  "DPIN": 2,
+                                  "LEVEL": "LOW"
+                                },
+                                "next": {
+                                  "block": {
+                                    "type": "hw_wait",
+                                    "id": "({nm~L+2yOUJ@m+l$DJw",
+                                    "fields": {
+                                      "MS": 500
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

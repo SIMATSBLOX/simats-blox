@@ -1,0 +1,79 @@
+{
+  "version": 1,
+  "projectName": "Example: LM35 temperature (raw ADC)",
+  "boardId": "esp32",
+  "description": "LM35 analog out → GPIO34 (ADC1, input-only on many DevKit boards). Serial 115200: labeled raw read every 500 ms. Convert to °C in your lesson (≈ 10 mV/°C for classic LM35 at 3.3 V ref).",
+  "blockly": {
+    "blocks": {
+      "languageVersion": 0,
+      "blocks": [
+        {
+          "type": "esp32_when_starts",
+          "id": "*BZ^[50u|7W7$B`}8fPk",
+          "x": 20,
+          "y": 20,
+          "next": {
+            "block": {
+              "type": "comm_serial_begin",
+              "id": "!*m#tn+1}Dg/_:ej1|a?",
+              "fields": {
+                "BAUD": 115200
+              },
+              "next": {
+                "block": {
+                  "type": "hw_forever",
+                  "id": "[J%T(4gNS3yQo^[7Y=Mw",
+                  "inputs": {
+                    "DO": {
+                      "block": {
+                        "type": "comm_serial_print",
+                        "id": "y6u]H`l)qQNq~iB9oCOF",
+                        "inputs": {
+                          "VAL": {
+                            "block": {
+                              "type": "text",
+                              "id": "n1Uy,(?qDsnX#F6zqH=8",
+                              "fields": {
+                                "TEXT": "LM35 raw: "
+                              }
+                            }
+                          }
+                        },
+                        "next": {
+                          "block": {
+                            "type": "comm_serial_println",
+                            "id": "bWxk.A7@w%md6?*L;-~-",
+                            "inputs": {
+                              "VAL": {
+                                "block": {
+                                  "type": "esp32_read_analog_pin",
+                                  "id": "7}_:hX7b%fo!2koS;G.,",
+                                  "fields": {
+                                    "APIN_NUM": 34
+                                  }
+                                }
+                              }
+                            },
+                            "next": {
+                              "block": {
+                                "type": "hw_wait",
+                                "id": ")(/~4s-bZZ|f^uxI+mev",
+                                "fields": {
+                                  "MS": 500
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,90 @@
+{
+  "version": 1,
+  "projectName": "Example: IR / line sensor (digital)",
+  "boardId": "esp32",
+  "description": "GPIO14 with internal pull-up; digital sensor block prints True when the pin reads high. Many IR modules are active-low—invert logic in your lesson if needed.",
+  "blockly": {
+    "blocks": {
+      "languageVersion": 0,
+      "blocks": [
+        {
+          "type": "esp32_when_starts",
+          "id": "4%bd(~w%_3ng.(,I7h7?",
+          "x": 20,
+          "y": 20,
+          "next": {
+            "block": {
+              "type": "comm_serial_begin",
+              "id": "l9aMLjPv%s($K3Fp,YU+",
+              "fields": {
+                "BAUD": 115200
+              },
+              "next": {
+                "block": {
+                  "type": "board_pin_mode",
+                  "id": "EJP]sb]nml4Br+R_}G0Q",
+                  "fields": {
+                    "DPIN": 14,
+                    "MODE": "INPUT_PULLUP"
+                  },
+                  "next": {
+                    "block": {
+                      "type": "hw_forever",
+                      "id": "IrrJvi;TenRS0m5O2{ut",
+                      "inputs": {
+                        "DO": {
+                          "block": {
+                            "type": "comm_serial_print",
+                            "id": "1l8!4lY%39Ftzd=n3!W[",
+                            "inputs": {
+                              "VAL": {
+                                "block": {
+                                  "type": "text",
+                                  "id": "?s*(#0=Gd)8}^?p|6`7)",
+                                  "fields": {
+                                    "TEXT": "IR / line (bool): "
+                                  }
+                                }
+                              }
+                            },
+                            "next": {
+                              "block": {
+                                "type": "comm_serial_println",
+                                "id": "$W]%P@HU%q0[;4$HEXKp",
+                                "inputs": {
+                                  "VAL": {
+                                    "block": {
+                                      "type": "sensor_digital_mblock",
+                                      "id": "SsfW}D8`A93w[2v@DhuR",
+                                      "fields": {
+                                        "DSTYPE": "PIR",
+                                        "DPIN": 14
+                                      }
+                                    }
+                                  }
+                                },
+                                "next": {
+                                  "block": {
+                                    "type": "hw_wait",
+                                    "id": "t~.wwfMo|-ygbaW/9]K_",
+                                    "fields": {
+                                      "MS": 300
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

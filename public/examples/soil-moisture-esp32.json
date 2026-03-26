@@ -1,0 +1,80 @@
+{
+  "version": 1,
+  "projectName": "Example: Soil moisture (analog)",
+  "boardId": "esp32",
+  "description": "Analog soil sensor AO → GPIO34 (ADC1). Prints raw ADC every 1 s; calibrate dry/wet. With Wi-Fi on, prefer ADC1 pins per your module datasheet.",
+  "blockly": {
+    "blocks": {
+      "languageVersion": 0,
+      "blocks": [
+        {
+          "type": "esp32_when_starts",
+          "id": "}J@TX^=sGR[C;7)Q2+q)",
+          "x": 20,
+          "y": 20,
+          "next": {
+            "block": {
+              "type": "comm_serial_begin",
+              "id": "]R}TCFBx6zYJ1P--e%dB",
+              "fields": {
+                "BAUD": 115200
+              },
+              "next": {
+                "block": {
+                  "type": "hw_forever",
+                  "id": "n_fjSO{;BEfN5YIEw+i]",
+                  "inputs": {
+                    "DO": {
+                      "block": {
+                        "type": "comm_serial_print",
+                        "id": "{T3i.u0Dl9B?jblyz(NP",
+                        "inputs": {
+                          "VAL": {
+                            "block": {
+                              "type": "text",
+                              "id": "1TG7fThg-:4jF+6:iT]h",
+                              "fields": {
+                                "TEXT": "Soil moisture raw: "
+                              }
+                            }
+                          }
+                        },
+                        "next": {
+                          "block": {
+                            "type": "comm_serial_println",
+                            "id": "M@3y(IcXsL6B**z5H*5Z",
+                            "inputs": {
+                              "VAL": {
+                                "block": {
+                                  "type": "sensor_analog_mblock",
+                                  "id": "~*PM$Hvfjcxhe/p)HR3k",
+                                  "fields": {
+                                    "ASTYPE": "SOIL",
+                                    "APIN": 34
+                                  }
+                                }
+                              }
+                            },
+                            "next": {
+                              "block": {
+                                "type": "hw_wait",
+                                "id": "6m~~HGbp%!Q6[?b$gyHy",
+                                "fields": {
+                                  "MS": 1000
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

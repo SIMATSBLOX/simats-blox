@@ -1,0 +1,92 @@
+[
+  {
+    "file": "blink-led-uno.json",
+    "label": "Blink LED",
+    "boardId": "arduino_uno"
+  },
+  {
+    "file": "serial-basic-uno.json",
+    "label": "Serial Monitor (basic)",
+    "boardId": "arduino_uno"
+  },
+  {
+    "file": "ultrasonic-monitor-uno.json",
+    "label": "Ultrasonic distance",
+    "boardId": "arduino_uno"
+  },
+  {
+    "file": "dht-temp-humidity-uno.json",
+    "label": "DHT11 temp & humidity",
+    "boardId": "arduino_uno"
+  },
+  {
+    "file": "servo-sweep-uno.json",
+    "label": "Servo sweep",
+    "boardId": "arduino_uno"
+  },
+  {
+    "file": "motor-l298n-uno.json",
+    "label": "DC motor (L298N-style)",
+    "boardId": "arduino_uno"
+  },
+  {
+    "file": "lm35-uno.json",
+    "label": "LM35 (analog)",
+    "boardId": "arduino_uno"
+  },
+  {
+    "file": "ir-sensor-uno.json",
+    "label": "IR / line sensor (digital)",
+    "boardId": "arduino_uno"
+  },
+  {
+    "file": "soil-moisture-uno.json",
+    "label": "Soil moisture (analog)",
+    "boardId": "arduino_uno"
+  },
+  {
+    "file": "blink-led-esp32.json",
+    "label": "Blink LED",
+    "boardId": "esp32"
+  },
+  {
+    "file": "serial-basic-esp32.json",
+    "label": "Serial / print (basic)",
+    "boardId": "esp32"
+  },
+  {
+    "file": "ultrasonic-esp32.json",
+    "label": "Ultrasonic distance",
+    "boardId": "esp32"
+  },
+  {
+    "file": "dht-temp-humidity-esp32.json",
+    "label": "DHT22 temp & humidity",
+    "boardId": "esp32"
+  },
+  {
+    "file": "servo-sweep-esp32.json",
+    "label": "Servo sweep",
+    "boardId": "esp32"
+  },
+  {
+    "file": "motor-l298n-esp32.json",
+    "label": "DC motor (L298N-style)",
+    "boardId": "esp32"
+  },
+  {
+    "file": "lm35-esp32.json",
+    "label": "LM35 (analog)",
+    "boardId": "esp32"
+  },
+  {
+    "file": "ir-sensor-esp32.json",
+    "label": "IR / line sensor (digital)",
+    "boardId": "esp32"
+  },
+  {
+    "file": "soil-moisture-esp32.json",
+    "label": "Soil moisture (analog)",
+    "boardId": "esp32"
+  }
+]

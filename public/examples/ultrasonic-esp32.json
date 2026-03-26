@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "projectName": "Example: Ultrasonic distance",
+  "boardId": "esp32",
+  "description": "HC-SR04-style: TRIG GPIO5, ECHO GPIO18 (3.3 V safe levels — use a level shifter if your module is 5 V only). Prints cm every 500 ms.",
+  "blockly": {
+    "blocks": {
+      "languageVersion": 0,
+      "blocks": [
+        {
+          "type": "esp32_when_starts",
+          "id": "]B)l@`Tctm@[pIU`!!-3",
+          "x": 20,
+          "y": 20,
+          "next": {
+            "block": {
+              "type": "comm_serial_begin",
+              "id": "B{K=qa``m$|{/vGAd81+",
+              "fields": {
+                "BAUD": 115200
+              },
+              "next": {
+                "block": {
+                  "type": "hw_forever",
+                  "id": "ecAIFq{EP-BgKU7A+.@5",
+                  "inputs": {
+                    "DO": {
+                      "block": {
+                        "type": "comm_serial_println",
+                        "id": "-=gX4d=NIB$k2E*vu:F|",
+                        "inputs": {
+                          "VAL": {
+                            "block": {
+                              "type": "sensor_ultrasonic_mblock",
+                              "id": "hDm{mLhC1ZU|S;hQPt?l",
+                              "fields": {
+                                "TRIG": 5,
+                                "ECHO": 18
+                              }
+                            }
+                          }
+                        },
+                        "next": {
+                          "block": {
+                            "type": "hw_wait",
+                            "id": "h_lmO3QyIQi)(::L#3S.",
+                            "fields": {
+                              "MS": 500
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

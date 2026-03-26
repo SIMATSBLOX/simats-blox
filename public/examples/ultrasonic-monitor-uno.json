@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "projectName": "Example: Ultrasonic distance",
+  "boardId": "arduino_uno",
+  "description": "HC-SR04-style sensor: TRIG 2, ECHO 4. Prints distance (cm) every 500 ms. Uses the same ultrasonic block family as the toolbox.",
+  "blockly": {
+    "blocks": {
+      "languageVersion": 0,
+      "blocks": [
+        {
+          "type": "board_when_starts",
+          "id": "uj)52DBG5A1t_yN_FaZN",
+          "x": 20,
+          "y": 20,
+          "next": {
+            "block": {
+              "type": "comm_serial_begin",
+              "id": "{yy22u++8kfj|1Lz)hW9",
+              "fields": {
+                "BAUD": 9600
+              },
+              "next": {
+                "block": {
+                  "type": "hw_forever",
+                  "id": "}3+2G1Qx-6ac=aiQ`R|w",
+                  "inputs": {
+                    "DO": {
+                      "block": {
+                        "type": "comm_serial_println",
+                        "id": "n4S;!3a~Ec`KRB`9zf:F",
+                        "inputs": {
+                          "VAL": {
+                            "block": {
+                              "type": "sensor_ultrasonic_mblock",
+                              "id": "0QLJ%Q3m@S8U=ZnufEdt",
+                              "fields": {
+                                "TRIG": 2,
+                                "ECHO": 4
+                              }
+                            }
+                          }
+                        },
+                        "next": {
+                          "block": {
+                            "type": "hw_wait",
+                            "id": "sH?*[wU)r;2`CWn7W.j?",
+                            "fields": {
+                              "MS": 500
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

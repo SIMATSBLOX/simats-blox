@@ -1,0 +1,84 @@
+{
+  "version": 1,
+  "projectName": "Example: Servo sweep",
+  "boardId": "arduino_uno",
+  "description": "Standard servo signal on pin 9: 0° → 90° → 180° with pauses. Preview uses Servo.h-style helper code.",
+  "blockly": {
+    "blocks": {
+      "languageVersion": 0,
+      "blocks": [
+        {
+          "type": "board_when_starts",
+          "id": "ZW),|QkKXTf%Si*hUGEZ",
+          "x": 20,
+          "y": 20,
+          "next": {
+            "block": {
+              "type": "hw_forever",
+              "id": "PM3UTO0hS$L;FKJ@Ot0=",
+              "inputs": {
+                "DO": {
+                  "block": {
+                    "type": "output_servo_write",
+                    "id": "]k;6([!jHgK;3=2r_J.5",
+                    "fields": {
+                      "DPIN": 9,
+                      "ANGLE": 0
+                    },
+                    "next": {
+                      "block": {
+                        "type": "hw_wait",
+                        "id": "w2IcKkgElv9sXlzv?L$~",
+                        "fields": {
+                          "MS": 800
+                        },
+                        "next": {
+                          "block": {
+                            "type": "output_servo_write",
+                            "id": "Ed4;AW6O6b{Jpm)zi6Zp",
+                            "fields": {
+                              "DPIN": 9,
+                              "ANGLE": 90
+                            },
+                            "next": {
+                              "block": {
+                                "type": "hw_wait",
+                                "id": "5Y1eV5V*;BxoQ`:yFHf2",
+                                "fields": {
+                                  "MS": 800
+                                },
+                                "next": {
+                                  "block": {
+                                    "type": "output_servo_write",
+                                    "id": "2Ab/5nwVXn%d*sAYC=#Q",
+                                    "fields": {
+                                      "DPIN": 9,
+                                      "ANGLE": 180
+                                    },
+                                    "next": {
+                                      "block": {
+                                        "type": "hw_wait",
+                                        "id": "Uk]h6YcUyL~vPS^^,KEe",
+                                        "fields": {
+                                          "MS": 800
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

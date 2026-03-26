@@ -1,0 +1,115 @@
+import {
+  FIELD_ANALOG_APIN,
+  fieldDigitalPin,
+  fieldMs,
+  fieldPwmDuty,
+} from './pinFields.js';
+
+/** @type {import('blockly/core/utils/json').BlockDefinitionJson[]} */
+export const boardBlockDefinitions = [
+  {
+    type: 'board_when_starts',
+    message0: 'when board starts',
+    nextStatement: {},
+    style: 'hat_blocks',
+    tooltip: 'Runs once at boot. Put pinMode, Serial.begin, and one-time setup here.',
+  },
+  {
+    type: 'board_delay',
+    message0: 'delay %1 ms',
+    args0: [fieldMs('MS', 1000)],
+    inputsInline: true,
+    previousStatement: null,
+    nextStatement: null,
+    style: 'loop_blocks',
+    tooltip: 'Pause execution (delay).',
+  },
+  {
+    type: 'board_pin_mode',
+    message0: 'set digital pin %1 mode %2',
+    args0: [
+      fieldDigitalPin('DPIN', 2, 39),
+      {
+        type: 'field_dropdown',
+        name: 'MODE',
+        options: [
+          ['INPUT', 'INPUT'],
+          ['OUTPUT', 'OUTPUT'],
+          ['INPUT_PULLUP', 'INPUT_PULLUP'],
+        ],
+      },
+    ],
+    inputsInline: true,
+    previousStatement: null,
+    nextStatement: null,
+    style: 'loop_blocks',
+    tooltip: 'INPUT / OUTPUT / INPUT_PULLUP for digital pins.',
+  },
+  {
+    type: 'board_digital_write',
+    message0: 'digital write pin %1 %2',
+    args0: [
+      fieldDigitalPin('DPIN', 13, 39),
+      {
+        type: 'field_dropdown',
+        name: 'LEVEL',
+        options: [
+          ['HIGH', 'HIGH'],
+          ['LOW', 'LOW'],
+        ],
+      },
+    ],
+    inputsInline: true,
+    previousStatement: null,
+    nextStatement: null,
+    style: 'loop_blocks',
+    tooltip: 'HIGH or LOW for digital OUTPUT pins.',
+  },
+  {
+    type: 'board_digital_read',
+    message0: 'digital read pin %1',
+    args0: [fieldDigitalPin('DPIN', 7, 39)],
+    inputsInline: true,
+    output: 'Number',
+    style: 'math_blocks',
+    tooltip: 'Returns HIGH (1) or LOW (0). Edit the pin number inline.',
+  },
+  {
+    type: 'board_analog_read',
+    message0: 'analog read %1',
+    args0: [FIELD_ANALOG_APIN],
+    inputsInline: true,
+    output: 'Number',
+    style: 'math_blocks',
+    tooltip: 'Uno: A0–A5. ESP32: same labels map to common ADC1 GPIOs on many DevKit boards.',
+  },
+  {
+    type: 'board_analog_write',
+    message0: 'PWM write pin %1 duty %2',
+    args0: [fieldDigitalPin('DPIN', 5, 39), fieldPwmDuty(128)],
+    inputsInline: true,
+    previousStatement: null,
+    nextStatement: null,
+    style: 'loop_blocks',
+    tooltip: 'analogWrite() — Uno: ~3,5,6,9,10,11. ESP32: LEDC-backed pins in Arduino core.',
+  },
+  {
+    type: 'board_serial_begin',
+    message0: 'serial begin baud %1',
+    args0: [
+      {
+        type: 'field_number',
+        name: 'BAUD',
+        value: 9600,
+        min: 300,
+        max: 2000000,
+        precision: 0,
+      },
+    ],
+    inputsInline: true,
+    previousStatement: null,
+    nextStatement: null,
+    style: 'loop_blocks',
+    tooltip: 'USB serial bitrate. Call once in setup; match the Serial Monitor.',
+  },
+];

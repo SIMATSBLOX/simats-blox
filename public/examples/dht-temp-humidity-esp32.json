@@ -1,0 +1,83 @@
+{
+  "version": 1,
+  "projectName": "Example: DHT22 temperature & humidity",
+  "boardId": "esp32",
+  "description": "DHT22 on GPIO15. Preview uses the machine/dht-style helpers. Allow 2 s between reads. Change the pin in blocks if your wiring differs.",
+  "blockly": {
+    "blocks": {
+      "languageVersion": 0,
+      "blocks": [
+        {
+          "type": "esp32_when_starts",
+          "id": "N^~;:+J*G$]$~Dk+(_m-",
+          "x": 20,
+          "y": 20,
+          "next": {
+            "block": {
+              "type": "comm_serial_begin",
+              "id": "8^,z)r`s71mv$,be^!4w",
+              "fields": {
+                "BAUD": 115200
+              },
+              "next": {
+                "block": {
+                  "type": "hw_forever",
+                  "id": "`=jJjDHosK~89LRcQpF0",
+                  "inputs": {
+                    "DO": {
+                      "block": {
+                        "type": "comm_serial_println",
+                        "id": "hKP2e5W.+K5M:imOzA;w",
+                        "inputs": {
+                          "VAL": {
+                            "block": {
+                              "type": "sensor_dht_mblock",
+                              "id": "k/}w9X~ywHma=dKGB8)L",
+                              "fields": {
+                                "DHTFIELD": "TEMP",
+                                "DPIN": 15,
+                                "TYPE": "DHT22"
+                              }
+                            }
+                          }
+                        },
+                        "next": {
+                          "block": {
+                            "type": "comm_serial_println",
+                            "id": "%;VUYT%iv_!XxU`=82O:",
+                            "inputs": {
+                              "VAL": {
+                                "block": {
+                                  "type": "sensor_dht_mblock",
+                                  "id": "ICu1)eUvTS0]q:Xg{-lI",
+                                  "fields": {
+                                    "DHTFIELD": "HUM",
+                                    "DPIN": 15,
+                                    "TYPE": "DHT22"
+                                  }
+                                }
+                              }
+                            },
+                            "next": {
+                              "block": {
+                                "type": "hw_wait",
+                                "id": "nYDpGnvBTz2wJdTR!*RZ",
+                                "fields": {
+                                  "MS": 2000
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

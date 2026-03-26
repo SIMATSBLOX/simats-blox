@@ -1,0 +1,62 @@
+{
+  "version": 1,
+  "projectName": "Example: Serial / print (basic)",
+  "boardId": "esp32",
+  "description": "MicroPython preview uses print() in the loop. Thonny/REPL or serial at 115200 baud. The serial-begin block is a teaching marker in preview.",
+  "blockly": {
+    "blocks": {
+      "languageVersion": 0,
+      "blocks": [
+        {
+          "type": "esp32_when_starts",
+          "id": ";%h5zIoNkxd^{:Sq{3xt",
+          "x": 20,
+          "y": 20,
+          "next": {
+            "block": {
+              "type": "comm_serial_begin",
+              "id": "^qYA%7k`%V{udmYP2QX*",
+              "fields": {
+                "BAUD": 115200
+              },
+              "next": {
+                "block": {
+                  "type": "hw_forever",
+                  "id": "bsy)-5kIND0QJT9.Cp.S",
+                  "inputs": {
+                    "DO": {
+                      "block": {
+                        "type": "comm_serial_println",
+                        "id": "JRMj6RXZ=:;oX[`GDqaJ",
+                        "inputs": {
+                          "VAL": {
+                            "block": {
+                              "type": "text",
+                              "id": "c9Z[k_x#XZG/;m)0H(DA",
+                              "fields": {
+                                "TEXT": "Hello from ESP32"
+                              }
+                            }
+                          }
+                        },
+                        "next": {
+                          "block": {
+                            "type": "hw_wait",
+                            "id": ")P^zgYP~Q4aBA8/C[tOT",
+                            "fields": {
+                              "MS": 1000
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "projectName": "Example: DC motor (L298N-style)",
+  "boardId": "esp32",
+  "description": "Motor #1: IN1=2, IN2=4, PWM=5. Runs forward at PWM 120, 2 s per loop. MicroPython preview sets pin directions and PWM duty; verify GPIOs match your driver.",
+  "blockly": {
+    "blocks": {
+      "languageVersion": 0,
+      "blocks": [
+        {
+          "type": "esp32_when_starts",
+          "id": "m0jf1gLu[Y2`}D[3fxDK",
+          "x": 20,
+          "y": 20,
+          "next": {
+            "block": {
+              "type": "mblock_motor_connect",
+              "id": "5BK7_$gq#BS)S?b42RK)",
+              "fields": {
+                "MID": 1,
+                "D1": 2,
+                "D2": 4,
+                "PWM": 5
+              },
+              "next": {
+                "block": {
+                  "type": "hw_forever",
+                  "id": "k8Jzb_L7=)S}joy[`bB=",
+                  "inputs": {
+                    "DO": {
+                      "block": {
+                        "type": "mblock_motor_run",
+                        "id": "NC?o#B1,^IL7l;%9Dg/0",
+                        "fields": {
+                          "MID": 1,
+                          "MDIR": "FWD",
+                          "SPEED": 120
+                        },
+                        "next": {
+                          "block": {
+                            "type": "hw_wait",
+                            "id": ",4h]])8ywAeS)O8#(66l",
+                            "fields": {
+                              "MS": 2000
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}
