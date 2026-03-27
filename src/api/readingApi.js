@@ -7,6 +7,13 @@ function authHeaders() {
   return { Authorization: `Bearer ${token}` };
 }
 
+/** Express often returns HTML like `<pre>Cannot DELETE /api/foo</pre>` for unknown routes. */
+function isExpressUnmatchedRouteBody(msg) {
+  if (typeof msg !== 'string') return false;
+  const plain = msg.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+  return /\bCannot [A-Z]+ \/api\//.test(plain);
+}
+
 async function handle(res) {
   const text = await res.text();
   let body = null;
@@ -16,7 +23,11 @@ async function handle(res) {
     body = { error: text || res.statusText };
   }
   if (!res.ok) {
-    const msg = body?.error || body?.details?.join?.(', ') || res.statusText;
+    let msg = body?.error || body?.details?.join?.(', ') || res.statusText;
+    if (typeof msg === 'string' && res.status === 404 && isExpressUnmatchedRouteBody(msg)) {
+      msg =
+        'This API build does not support that request (404). Redeploy the API host with the latest code — e.g. device delete needs DELETE /api/devices/:id on the server.';
+    }
     throw new Error(typeof msg === 'string' ? msg : 'Request failed');
   }
   return body;
@@ -58,6 +69,17 @@ export async function registerDevice(body) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify(body),
+  });
+  return handle(res);
+}
+
+/**
+ * @param {string} deviceId
+ */
+export async function deleteDevice(deviceId) {
+  const res = await fetch(`${API_PREFIX}/devices/${encodeURIComponent(deviceId)}`, {
+    method: 'DELETE',
+    headers: { ...authHeaders() },
   });
   return handle(res);
 }

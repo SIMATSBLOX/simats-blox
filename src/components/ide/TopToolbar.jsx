@@ -1245,16 +1245,18 @@ export default function TopToolbar({ workspace, previewCode = '', onAfterProject
         </div>
 
         <div className="flex shrink-0 items-center gap-0.5 border-l border-studio-border/80 pl-2 sm:gap-1 sm:pl-3">
-          {expressSignedIn ? (
-            <Link
-              to="/devices"
-              className="rounded p-1.5 text-studio-muted hover:bg-white/5 hover:text-slate-200"
-              title="Devices & live sensors (same account — works on phone or second PC)"
-              aria-label="Open devices dashboard"
-            >
-              <LayoutDashboard className="h-3.5 w-3.5" />
-            </Link>
-          ) : null}
+          <Link
+            to="/devices"
+            className="inline-flex items-center gap-1.5 rounded-md border border-studio-border/70 bg-[#1a1d22]/95 px-2 py-1 text-[11px] font-medium text-slate-200 shadow-sm hover:border-studio-border hover:bg-[#232830] hover:text-white"
+            title={
+              expressSignedIn
+                ? 'Live sensors & device list (same account on other browsers)'
+                : 'Devices — sign in under Settings → Local API first'
+            }
+          >
+            <LayoutDashboard className="h-3.5 w-3.5 shrink-0 opacity-90" aria-hidden />
+            <span className="hidden min-[420px]:inline">Devices</span>
+          </Link>
           <button
             type="button"
             className="rounded p-1.5 text-slate-600 hover:bg-white/5 hover:text-slate-400"

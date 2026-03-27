@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import Button from '../ui/Button.jsx';
 import { BOARD_LABEL, useIdeStore } from '../../store/ideStore.js';
 import { useAuthStore } from '../../store/authStore.js';
@@ -203,7 +204,9 @@ export default function SettingsModal({ open, onClose }) {
             <section className="space-y-2">
               <SectionTitle>Account</SectionTitle>
               <p className="text-[11px] leading-relaxed text-studio-muted">
-                Sign in to save and open projects on Supabase or on the optional local dev API. You can always use{' '}
+                Sign in to save and open projects on Supabase or on the optional local dev API. With{' '}
+                <span className="text-slate-400">Local API</span> sign-in you also get{' '}
+                <span className="text-slate-400">Devices</span> in the toolbar for live ESP32 sensors. You can always use{' '}
                 <span className="text-slate-400">this browser only</span> without an account.
               </p>
 
@@ -336,9 +339,16 @@ export default function SettingsModal({ open, onClose }) {
                       <p className="mt-1 font-mono text-[11px] text-slate-200">{login}</p>
                       <p className="mt-2 text-[10px] leading-relaxed text-studio-muted">
                         Projects live in SQLite when the API is running (<span className="font-mono">npm run dev:full</span>
-                        ).
+                        ). Use <span className="text-slate-400">Devices</span> in the top bar for sensors.
                       </p>
-                      <div className="mt-2">
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        <Link
+                          to="/devices"
+                          onClick={() => onClose()}
+                          className="inline-flex items-center justify-center rounded px-2.5 py-1 text-xs font-medium text-white bg-studio-accent border border-transparent hover:bg-studio-accentHover"
+                        >
+                          Open Devices & sensors
+                        </Link>
                         <Button variant="default" className="!text-xs" onClick={handleSignOut}>
                           Sign out (local API)
                         </Button>

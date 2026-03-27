@@ -134,3 +134,26 @@ export async function getHistory(req, res) {
     res.status(500).json({ error: 'Could not load history.' });
   }
 }
+
+export async function deleteDevice(req, res) {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ error: 'Sign in required.' });
+    }
+    const { deviceId } = req.params;
+    if (typeof deviceId !== 'string' || !deviceId.trim()) {
+      return res.status(400).json({ error: 'deviceId is required.' });
+    }
+    const device = await Device.findOne({ deviceId: deviceId.trim(), ownerUserId: userId });
+    if (!device) {
+      return res.status(404).json({ error: 'Device not found.' });
+    }
+    await SensorReading.deleteMany({ deviceId: device.deviceId, ownerUserId: userId });
+    await Device.deleteOne({ _id: device._id });
+    res.status(204).end();
+  } catch (e) {
+    console.error('[deleteDevice]', e);
+    res.status(500).json({ error: 'Could not delete device.' });
+  }
+}

@@ -60,7 +60,12 @@ export default function DashboardPage() {
 
         <div className="mt-6 grid gap-4">
           {devices.map((d) => (
-            <DeviceStatusCard key={d.deviceId} device={d} latest={latestById[d.deviceId] ?? null} />
+            <DeviceStatusCard
+              key={d.deviceId}
+              device={d}
+              latest={latestById[d.deviceId] ?? null}
+              onDeviceDeleted={() => void refetch()}
+            />
           ))}
         </div>
       </main>
