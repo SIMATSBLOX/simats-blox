@@ -1,12 +1,9 @@
 /**
- * API + real-time configuration for deploy-later workflows.
+ * REST + Socket.IO base URL for the Express API (SQLite backend).
  *
- * Local dev (default): leave VITE_API_URL unset — browser uses same origin; Vite proxies
- * `/api` and `/socket.io` to the Express server (see vite.config.js).
- *
- * Deployed: set VITE_API_URL to your API origin only (no trailing slash), e.g.
- * `https://api.yourdomain.com` — REST becomes `${VITE_API_URL}/api/...` and Socket.IO
- * connects to that host (CORS must allow your web app origin on the server).
+ * Local: omit VITE_API_URL — same origin; Vite proxies `/api` and `/socket.io` (vite.config.js).
+ * Production (split static + API): set VITE_API_URL to the API origin only (no trailing slash).
+ * Server must set CLIENT_ORIGIN / CORS for your UI origin.
  */
 const trimmedApiOrigin = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
 
@@ -24,4 +21,13 @@ export function getSocketIoUrl() {
     return window.location.origin;
   }
   return '';
+}
+
+/** Absolute or origin-relative URL for `POST` sensor readings (includes `x-device-key` header). */
+export function getReadingsPostUrl() {
+  if (trimmedApiOrigin) return `${trimmedApiOrigin}/api/readings`;
+  if (typeof window !== 'undefined' && window.location?.origin) {
+    return `${window.location.origin}/api/readings`;
+  }
+  return '/api/readings';
 }

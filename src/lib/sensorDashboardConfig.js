@@ -1,6 +1,6 @@
 /**
  * Sensor-wise UI: which metrics exist per device type (dashboard + device detail).
- * Keep in sync with backend validateReadingPayload + Device.sensorType enum.
+ * Keep in sync with backend validateReadingPayload + sensor_types in SQLite.
  */
 
 /** @typedef {{ key: string; label: string; unit?: string; kind?: 'number' | 'boolean' }} SensorFieldDef */

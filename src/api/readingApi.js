@@ -1,8 +1,8 @@
-import { readAuthTokenFromStorage } from '../lib/authStorage.js';
+import { getDashboardAccessToken } from '../lib/dashboardAuthToken.js';
 import { API_PREFIX } from '../lib/apiConfig.js';
 
-function authHeaders() {
-  const token = readAuthTokenFromStorage();
+async function authHeaders() {
+  const { token } = await getDashboardAccessToken();
   if (!token) return {};
   return { Authorization: `Bearer ${token}` };
 }
@@ -34,7 +34,7 @@ async function handle(res) {
 }
 
 export async function fetchDeviceList() {
-  const res = await fetch(`${API_PREFIX}/devices`, { headers: { ...authHeaders() } });
+  const res = await fetch(`${API_PREFIX}/devices`, { headers: { ...(await authHeaders()) } });
   return handle(res);
 }
 
@@ -43,7 +43,7 @@ export async function fetchDeviceList() {
  */
 export async function fetchDeviceLatest(deviceId) {
   const res = await fetch(`${API_PREFIX}/devices/${encodeURIComponent(deviceId)}/latest`, {
-    headers: { ...authHeaders() },
+    headers: { ...(await authHeaders()) },
   });
   return handle(res);
 }
@@ -55,19 +55,30 @@ export async function fetchDeviceLatest(deviceId) {
 export async function fetchDeviceHistory(deviceId, limit = 80) {
   const q = new URLSearchParams({ limit: String(limit) });
   const res = await fetch(`${API_PREFIX}/devices/${encodeURIComponent(deviceId)}/history?${q}`, {
-    headers: { ...authHeaders() },
+    headers: { ...(await authHeaders()) },
   });
   return handle(res);
 }
 
 /**
+ * Aggregated log: all devices or one device (newest first).
+ * @param {{ deviceId?: string; limit?: number }} [opts]
+ */
+export async function fetchReadingsHistoryLog(opts = {}) {
+  const q = new URLSearchParams({ limit: String(opts.limit ?? 120) });
+  if (opts.deviceId) q.set('deviceId', opts.deviceId);
+  const res = await fetch(`${API_PREFIX}/readings/history?${q}`, { headers: { ...(await authHeaders()) } });
+  return handle(res);
+}
+
+/**
  * Register a device for the signed-in user. Returns `apiKey` once — store it on the ESP32.
- * @param {{ deviceId: string; name: string; sensorType: string; location?: string; apiKey?: string }} body
+ * @param {{ deviceId: string, name: string, sensorType: string, location?: string, apiKey?: string }} body
  */
 export async function registerDevice(body) {
   const res = await fetch(`${API_PREFIX}/devices`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
     body: JSON.stringify(body),
   });
   return handle(res);
@@ -79,7 +90,38 @@ export async function registerDevice(body) {
 export async function deleteDevice(deviceId) {
   const res = await fetch(`${API_PREFIX}/devices/${encodeURIComponent(deviceId)}`, {
     method: 'DELETE',
-    headers: { ...authHeaders() },
+    headers: { ...(await authHeaders()) },
+  });
+  return handle(res);
+}
+
+/**
+ * @param {string} deviceId
+ * @returns {Promise<{ deviceId: string, apiKey: string }>}
+ */
+export async function regenerateDeviceKey(deviceId) {
+  const res = await fetch(`${API_PREFIX}/devices/${encodeURIComponent(deviceId)}/regenerate-key`, {
+    method: 'POST',
+    headers: { ...(await authHeaders()) },
+  });
+  return handle(res);
+}
+
+/**
+ * Device-authenticated POST (no user JWT). Uses x-device-key header.
+ * @param {string} apiKey
+ * @param {{ deviceId: string, sensorType: string, data: Record<string, unknown> }} body
+ */
+export async function postDeviceReading(apiKey, body) {
+  const key = String(apiKey ?? '').trim();
+  if (!key) throw new Error('Missing device API key.');
+  const res = await fetch(`${API_PREFIX}/readings`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-device-key': key,
+    },
+    body: JSON.stringify(body),
   });
   return handle(res);
 }

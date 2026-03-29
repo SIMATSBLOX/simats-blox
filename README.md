@@ -2,6 +2,16 @@
 
 Blockly editor for Arduino Uno (C++ preview) and ESP32 (MicroPython preview). **Connect, Upload, and serial are UI placeholders** — blocks and generated code only.
 
+## Architecture (quick overview)
+
+This repo is **one website** (React) talking to **one Node server** (Express). You do **not** run two separate backends.
+
+1. **Frontend entry:** `index.html` loads **`src/main.jsx`**, which renders **`src/App.jsx`**. All UI, Blockly, and device pages live under **`src/`**. Static assets and example JSON live under **`public/`**. Vite serves the UI in dev (often port **5173**).
+2. **Backend entry:** **`server/index.js`** is what **`npm run server`** runs. That file creates the HTTP server, handles **sign-in** and **saved projects** (SQLite), and attaches the sensor API.
+3. **`server/` + `backend/src/` together:** **`server/index.js`** imports **`backend/src/sensorPlatform.js`**, which registers **device + readings routes** and **Socket.IO** on the **same** Express app. So **`server/`** = main API process and database helpers; **`backend/src/`** = sensor/readings module (routes, controllers, validation). Both run in **one process** on **one port** (default **3847**).
+4. **SQLite:** The local API stores data in **`server/data/`** (e.g. `ide.sqlite`). That folder is gitignored so your local DB is not committed.
+5. **Local development commands:** See **Install & run** and **Run with account projects** below. Short version: **`npm install`**, then **`npm run dev`** (UI only) or **`npm run dev:full`** (API + UI together).
+
 ## Requirements
 
 - Node.js 18+

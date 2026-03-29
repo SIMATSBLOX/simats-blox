@@ -1,8 +1,8 @@
-import jwt from 'jsonwebtoken';
-import { JWT_SECRET } from '../config/jwt.js';
+import { verifyDashboardBearerToken } from '../../../server/dashboardJwt.js';
 
 /**
- * Same JWT contract as SQLite auth API (`Authorization: Bearer …`).
+ * JWT for device/dashboard APIs: Supabase access token first (if SUPABASE_JWT_SECRET set),
+ * then legacy Express SQLite auth token.
  */
 export function authUserJwt(req, res, next) {
   const h = req.headers.authorization;
@@ -10,14 +10,10 @@ export function authUserJwt(req, res, next) {
     return res.status(401).json({ error: 'Sign in required.' });
   }
   const token = h.slice(7).trim();
-  try {
-    const payload = jwt.verify(token, JWT_SECRET);
-    if (!payload?.sub || typeof payload.sub !== 'string') {
-      return res.status(401).json({ error: 'Invalid session.' });
-    }
-    req.user = { id: payload.sub, login: String(payload.login || '') };
-    next();
-  } catch {
+  const out = verifyDashboardBearerToken(token);
+  if (!out) {
     return res.status(401).json({ error: 'Session expired or invalid. Sign in again.' });
   }
+  req.user = { id: out.sub, login: out.login, authSource: out.authSource };
+  next();
 }

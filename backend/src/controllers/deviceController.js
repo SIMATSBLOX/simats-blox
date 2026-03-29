@@ -1,10 +1,10 @@
 import crypto from 'node:crypto';
-import { Device, SENSOR_TYPES } from '../models/Device.js';
-import { SensorReading } from '../models/SensorReading.js';
+import { SENSOR_TYPES } from '../constants/sensorTypes.js';
+import { getSensorRepository } from '../../../server/repositories/getSensorRepository.js';
 
 const TYPE_SET = new Set(SENSOR_TYPES);
 
-export async function registerDevice(req, res) {
+export function registerDevice(req, res) {
   try {
     const userId = req.user?.id;
     if (!userId) {
@@ -23,29 +23,28 @@ export async function registerDevice(req, res) {
     }
 
     const trimmedId = deviceId.trim();
-    const existing = await Device.findOne({ deviceId: trimmedId }).lean();
-    if (existing) {
-      if (existing.ownerUserId !== userId) {
-        return res.status(409).json({ error: 'This deviceId is already registered to another account.' });
-      }
-      return res.status(409).json({ error: 'You have already registered this deviceId.' });
-    }
-
     const key =
       typeof apiKey === 'string' && apiKey.trim().length >= 16
         ? apiKey.trim()
         : crypto.randomBytes(32).toString('hex');
 
-    const device = await Device.create({
+    const inserted = getSensorRepository().insertSensorDevice({
       ownerUserId: userId,
       deviceId: trimmedId,
       name: name.trim(),
       sensorType,
       location: typeof location === 'string' ? location.trim() : '',
       apiKey: key,
-      status: 'offline',
     });
 
+    if (!inserted.ok) {
+      if (inserted.code === 'other_user') {
+        return res.status(409).json({ error: 'This deviceId is already registered to another account.' });
+      }
+      return res.status(409).json({ error: 'You have already registered this deviceId.' });
+    }
+
+    const { device } = inserted;
     res.status(201).json({
       deviceId: device.deviceId,
       name: device.name,
@@ -56,24 +55,18 @@ export async function registerDevice(req, res) {
       createdAt: device.createdAt,
     });
   } catch (e) {
-    if (e?.name === 'ValidationError') {
-      return res.status(400).json({ error: String(e.message || 'Validation failed.') });
-    }
     console.error('[registerDevice]', e);
     res.status(500).json({ error: 'Could not register device.' });
   }
 }
 
-export async function listDevices(req, res) {
+export function listDevices(req, res) {
   try {
     const userId = req.user?.id;
     if (!userId) {
       return res.status(401).json({ error: 'Sign in required.' });
     }
-    const devices = await Device.find({ ownerUserId: userId })
-      .select('-apiKey')
-      .sort({ updatedAt: -1 })
-      .lean();
+    const devices = getSensorRepository().listSensorDevicesForUser(userId);
     res.json({ devices });
   } catch (e) {
     console.error('[listDevices]', e);
@@ -81,20 +74,19 @@ export async function listDevices(req, res) {
   }
 }
 
-export async function getLatestForDevice(req, res) {
+export function getLatestForDevice(req, res) {
   try {
     const userId = req.user?.id;
     if (!userId) {
       return res.status(401).json({ error: 'Sign in required.' });
     }
     const { deviceId } = req.params;
-    const device = await Device.findOne({ deviceId, ownerUserId: userId }).select('-apiKey').lean();
+    const repo = getSensorRepository();
+    const device = repo.getSensorDeviceForUser(userId, deviceId);
     if (!device) {
       return res.status(404).json({ error: 'Device not found.' });
     }
-    const latest = await SensorReading.findOne({ deviceId, ownerUserId: userId })
-      .sort({ createdAt: -1 })
-      .lean();
+    const latest = repo.getLatestSensorReading(userId, deviceId);
     res.json({
       device,
       latest: latest
@@ -111,7 +103,7 @@ export async function getLatestForDevice(req, res) {
   }
 }
 
-export async function getHistory(req, res) {
+export function getHistory(req, res) {
   try {
     const userId = req.user?.id;
     if (!userId) {
@@ -119,15 +111,12 @@ export async function getHistory(req, res) {
     }
     const { deviceId } = req.params;
     const limit = Math.min(500, Math.max(1, Number(req.query.limit) || 50));
-    const device = await Device.findOne({ deviceId, ownerUserId: userId }).select('-apiKey').lean();
+    const repo = getSensorRepository();
+    const device = repo.getSensorDeviceForUser(userId, deviceId);
     if (!device) {
       return res.status(404).json({ error: 'Device not found.' });
     }
-    const readings = await SensorReading.find({ deviceId, ownerUserId: userId })
-      .sort({ createdAt: -1 })
-      .limit(limit)
-      .select('sensorType data createdAt')
-      .lean();
+    const readings = repo.getSensorReadingsHistory(userId, deviceId, limit);
     res.json({ device, readings, count: readings.length });
   } catch (e) {
     console.error('[getHistory]', e);
@@ -135,7 +124,33 @@ export async function getHistory(req, res) {
   }
 }
 
-export async function deleteDevice(req, res) {
+/** GET /api/readings/history — all devices or one device; newest first. */
+export function listReadingsHistory(req, res) {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ error: 'Sign in required.' });
+    }
+    const limit = Math.min(500, Math.max(1, Number(req.query.limit) || 100));
+    const repo = getSensorRepository();
+    const raw = req.query.deviceId;
+    let filterDeviceId;
+    if (typeof raw === 'string' && raw.trim()) {
+      const trimmed = raw.trim();
+      if (!repo.getSensorDeviceForUser(userId, trimmed)) {
+        return res.status(404).json({ error: 'Device not found.' });
+      }
+      filterDeviceId = trimmed;
+    }
+    const readings = repo.listSensorReadingsLog(userId, filterDeviceId, limit);
+    res.json({ readings, count: readings.length });
+  } catch (e) {
+    console.error('[listReadingsHistory]', e);
+    res.status(500).json({ error: 'Could not load readings log.' });
+  }
+}
+
+export function deleteDevice(req, res) {
   try {
     const userId = req.user?.id;
     if (!userId) {
@@ -145,15 +160,37 @@ export async function deleteDevice(req, res) {
     if (typeof deviceId !== 'string' || !deviceId.trim()) {
       return res.status(400).json({ error: 'deviceId is required.' });
     }
-    const device = await Device.findOne({ deviceId: deviceId.trim(), ownerUserId: userId });
-    if (!device) {
+    const removed = getSensorRepository().deleteSensorDevice(userId, deviceId.trim());
+    if (!removed) {
       return res.status(404).json({ error: 'Device not found.' });
     }
-    await SensorReading.deleteMany({ deviceId: device.deviceId, ownerUserId: userId });
-    await Device.deleteOne({ _id: device._id });
     res.status(204).end();
   } catch (e) {
     console.error('[deleteDevice]', e);
     res.status(500).json({ error: 'Could not delete device.' });
+  }
+}
+
+export function regenerateDeviceKey(req, res) {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ error: 'Sign in required.' });
+    }
+    const { deviceId } = req.params;
+    if (typeof deviceId !== 'string' || !deviceId.trim()) {
+      return res.status(400).json({ error: 'deviceId is required.' });
+    }
+    const out = getSensorRepository().regenerateSensorDeviceApiKey(userId, deviceId.trim());
+    if (!out.ok) {
+      return res.status(404).json({ error: 'Device not found.' });
+    }
+    res.json({
+      deviceId: deviceId.trim(),
+      apiKey: out.apiKey,
+    });
+  } catch (e) {
+    console.error('[regenerateDeviceKey]', e);
+    res.status(500).json({ error: 'Could not regenerate key.' });
   }
 }

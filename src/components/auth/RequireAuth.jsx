@@ -1,11 +1,11 @@
 import { Navigate, useLocation } from 'react-router-dom';
-import { useAuthStore } from '../../store/authStore.js';
+import { useDashboardSession } from '../../hooks/useDashboardSession.js';
 
 /**
  * @param {{ children: import('react').ReactNode }} props
  */
 export default function RequireAuth({ children }) {
-  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const { isAuthenticated } = useDashboardSession();
   const location = useLocation();
 
   if (!isAuthenticated) {

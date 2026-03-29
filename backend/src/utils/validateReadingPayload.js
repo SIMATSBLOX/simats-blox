@@ -1,4 +1,4 @@
-import { SENSOR_TYPES } from '../models/Device.js';
+import { SENSOR_TYPES } from '../constants/sensorTypes.js';
 
 const SENSOR_SET = new Set(SENSOR_TYPES);
 

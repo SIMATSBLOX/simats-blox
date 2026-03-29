@@ -1,5 +1,5 @@
 /**
- * SIMATS BLOX API: auth (JWT) + per-user projects (SQLite) + optional sensor hub (MongoDB + Socket.IO).
+ * SIMATS BLOX API: Express + single SQLite file (users, projects, sensor_devices, sensor_readings) + Socket.IO.
  * Run: npm run server   (default port 3847)
  */
 import http from 'node:http';
@@ -218,17 +218,15 @@ app.delete('/api/projects/:id', authMiddleware, (req, res) => {
 
 const httpServer = http.createServer(app);
 
-(async () => {
-  try {
-    await setupSensorPlatform(httpServer, app);
-  } catch (e) {
-    console.error('[sensor] Sensor platform failed — SQLite API still available.', e?.message || e);
-  }
+try {
+  setupSensorPlatform(httpServer, app);
+} catch (e) {
+  console.error('[sensor] Sensor platform failed — SQLite API still available.', e?.message || e);
+}
 
-  httpServer.listen(PORT, () => {
-    console.log(`SIMATS BLOX API listening on http://127.0.0.1:${PORT}`);
-    if (JWT_SECRET === 'dev-only-change-JWT_SECRET-in-production') {
-      console.warn('[warn] Using default JWT_SECRET — set JWT_SECRET for production.');
-    }
-  });
-})();
+httpServer.listen(PORT, () => {
+  console.log(`SIMATS BLOX API listening on http://127.0.0.1:${PORT}`);
+  if (JWT_SECRET === 'dev-only-change-JWT_SECRET-in-production') {
+    console.warn('[warn] Using default JWT_SECRET — set JWT_SECRET for production.');
+  }
+});

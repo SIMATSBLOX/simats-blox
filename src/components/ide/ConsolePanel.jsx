@@ -1,4 +1,5 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Trash2 } from 'lucide-react';
 import Panel from '../ui/Panel.jsx';
 import Tabs from '../ui/Tabs.jsx';
@@ -11,6 +12,13 @@ import { toast } from '../../lib/toast.js';
 import { consoleSerialDisconnectedCopy } from '../../lib/boardUiCopy.js';
 import Esp32MpyProgressModal from './Esp32MpyProgressModal.jsx';
 import { mapMpyStepToProgress } from '../../lib/mpyProgressPhases.js';
+import { useDashboardSession } from '../../hooks/useDashboardSession.js';
+import { fetchDeviceList, postDeviceReading } from '../../api/readingApi.js';
+import { getStoredDeviceApiKey } from '../../lib/deviceKeyStorage.js';
+import { parseSerialLineToReading } from '../../lib/serialReadingBridge.js';
+
+const LS_FWD = 'simats_serial_forward_enabled';
+const LS_DEV = 'simats_serial_forward_device_id';
 
 export default function ConsolePanel() {
   const [tab, setTab] = useState('log');
@@ -33,13 +41,126 @@ export default function ConsolePanel() {
   const appendLog = useIdeStore((s) => s.appendLog);
   const serialPipelineBusy = useIdeStore((s) => s.serialPipelineBusy);
   const setSerialPipelineBusy = useIdeStore((s) => s.setSerialPipelineBusy);
+  const lastSerialLine = useIdeStore((s) => {
+    const L = s.serialLines;
+    return L.length ? L[L.length - 1] : null;
+  });
+
+  const { isAuthenticated } = useDashboardSession();
+  const [bridgeDevices, setBridgeDevices] = useState(/** @type {object[]} */ ([]));
+  const [forwardEnabled, setForwardEnabled] = useState(() => {
+    try {
+      return localStorage.getItem(LS_FWD) === '1';
+    } catch {
+      return false;
+    }
+  });
+  const [forwardTargetId, setForwardTargetId] = useState(() => {
+    try {
+      return localStorage.getItem(LS_DEV) || '';
+    } catch {
+      return '';
+    }
+  });
 
   const serialScrollRef = useRef(/** @type {HTMLDivElement | null} */ (null));
   /** When true, new serial output auto-scrolls to the bottom; false if user scrolled up to read. */
   const stickSerialToBottomRef = useRef(true);
   const hintTimerRef = useRef(/** @type {ReturnType<typeof setTimeout> | null} */ (null));
+  const processedSerialIdRef = useRef(/** @type {string | null} */ (null));
+  const lastReadingPostAtRef = useRef(0);
 
   const SERIAL_STICK_BOTTOM_PX = 72;
+
+  const refreshBridgeDevices = useCallback(async () => {
+    if (!isAuthenticated) {
+      setBridgeDevices([]);
+      return;
+    }
+    try {
+      const { devices: list } = await fetchDeviceList();
+      const arr = Array.isArray(list) ? list : [];
+      setBridgeDevices(arr.filter((d) => getStoredDeviceApiKey(d.deviceId)));
+    } catch {
+      setBridgeDevices([]);
+    }
+  }, [isAuthenticated]);
+
+  useEffect(() => {
+    if (tab !== 'serial') return undefined;
+    void refreshBridgeDevices();
+    const onKeys = () => void refreshBridgeDevices();
+    window.addEventListener('simats-device-keys-changed', onKeys);
+    return () => window.removeEventListener('simats-device-keys-changed', onKeys);
+  }, [tab, refreshBridgeDevices]);
+
+  useEffect(() => {
+    if (bridgeDevices.length === 0) return;
+    const ids = new Set(bridgeDevices.map((d) => d.deviceId));
+    if (!forwardTargetId || !ids.has(forwardTargetId)) {
+      const next = bridgeDevices[0].deviceId;
+      setForwardTargetId(next);
+      try {
+        localStorage.setItem(LS_DEV, next);
+      } catch {
+        /* ignore */
+      }
+    }
+  }, [bridgeDevices, forwardTargetId]);
+
+  useEffect(() => {
+    if (!forwardEnabled || !isAuthenticated || !lastSerialLine) return;
+    if (lastSerialLine.id === processedSerialIdRef.current) return;
+
+    const apiKey = getStoredDeviceApiKey(forwardTargetId);
+    const dev = bridgeDevices.find((d) => d.deviceId === forwardTargetId);
+    if (!apiKey || !dev) {
+      processedSerialIdRef.current = lastSerialLine.id;
+      return;
+    }
+
+    const payload = parseSerialLineToReading(lastSerialLine.text, {
+      deviceId: forwardTargetId,
+      sensorType: dev.sensorType,
+    });
+    processedSerialIdRef.current = lastSerialLine.id;
+    if (!payload) return;
+
+    const now = Date.now();
+    if (now - lastReadingPostAtRef.current < 1000) return;
+    lastReadingPostAtRef.current = now;
+
+    void postDeviceReading(apiKey, payload).catch((e) => {
+      toast('error', e instanceof Error ? e.message : 'Could not send reading to Devices');
+    });
+  }, [
+    forwardEnabled,
+    isAuthenticated,
+    forwardTargetId,
+    bridgeDevices,
+    lastSerialLine?.id,
+    lastSerialLine?.text,
+  ]);
+
+  const persistForwardEnabled = (on) => {
+    setForwardEnabled(on);
+    try {
+      if (on) localStorage.setItem(LS_FWD, '1');
+      else localStorage.removeItem(LS_FWD);
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const persistForwardTarget = (id) => {
+    setForwardTargetId(id);
+    try {
+      if (id) localStorage.setItem(LS_DEV, id);
+      else localStorage.removeItem(LS_DEV);
+    } catch {
+      /* ignore */
+    }
+  };
 
   useEffect(() => {
     setTab('serial');
@@ -266,6 +387,60 @@ export default function ConsolePanel() {
                     <span>{consoleSerialDisconnectedCopy(boardId, serialBaudRate)}</span>
                   )}
                 </div>
+
+                <div className="space-y-2 rounded border border-emerald-900/25 bg-[#12151a]/90 px-2 py-2">
+                  <div className="text-[10px] font-medium uppercase tracking-wide text-emerald-200/70">Devices</div>
+                  <label className="flex cursor-pointer items-start gap-2 text-[11px] text-slate-300 select-none">
+                    <input
+                      type="checkbox"
+                      checked={forwardEnabled}
+                      onChange={(e) => persistForwardEnabled(e.target.checked)}
+                      className="mt-0.5 rounded border-studio-border bg-[#181b20] text-studio-accent focus:ring-studio-accent/40"
+                    />
+                    <span>
+                      <span className="font-medium text-slate-200">Send lines to Devices</span>
+                      <span className="text-slate-500"> — save your device key on the </span>
+                      <Link to="/devices" className="text-studio-accent hover:text-studio-accentHover">
+                        Devices
+                      </Link>
+                      <span className="text-slate-500"> page (Step 2), then connect serial here.</span>
+                    </span>
+                  </label>
+                  {forwardEnabled ? (
+                    <>
+                      {!isAuthenticated ? (
+                        <p className="text-[10px] leading-snug text-amber-200/85">
+                          Sign in: Settings → Local API.
+                        </p>
+                      ) : bridgeDevices.length === 0 ? (
+                        <p className="text-[10px] leading-snug text-amber-200/85">
+                          Save a device key on{' '}
+                          <Link to="/devices" className="text-studio-accent hover:text-studio-accentHover">
+                            Devices
+                          </Link>{' '}
+                          page — Step 2.
+                        </p>
+                      ) : (
+                        <label className="block text-[10px] text-studio-muted">
+                          Device
+                          <select
+                            value={forwardTargetId}
+                            onChange={(e) => persistForwardTarget(e.target.value)}
+                            className="mt-0.5 w-full rounded border border-studio-border bg-[#181b20] px-2 py-1 font-mono text-[11px] text-slate-200 focus:border-studio-accent/50 focus:outline-none focus:ring-1 focus:ring-studio-accent/25"
+                          >
+                            {bridgeDevices.map((d) => (
+                              <option key={d.deviceId} value={d.deviceId}>
+                                {d.name} · {d.sensorType} ({d.deviceId})
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                      )}
+                      <p className="text-[10px] text-slate-500">DHT11: one line like “Humidity: …% Temperature: …°C”. ~1 post/sec.</p>
+                    </>
+                  ) : null}
+                </div>
+
                 <div className="flex flex-wrap items-center gap-2">
                   <label htmlFor="serial-baud" className="text-[10px] text-slate-500">
                     Baud

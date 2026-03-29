@@ -1,4 +1,5 @@
 import { getSupabaseClient, isSupabaseConfigured } from './supabaseClient.js';
+import { disconnectSensorSocket } from '../api/socketClient.js';
 import { useCloudAuthStore } from '../store/cloudAuthStore.js';
 import { useIdeStore } from '../store/ideStore.js';
 import { refreshPersistTarget } from './cloudRouting.js';
@@ -90,6 +91,7 @@ export async function signIn(email, password) {
 
 export async function signOut() {
   if (!isSupabaseConfigured()) {
+    disconnectSensorSocket();
     useCloudAuthStore.getState().setFromSession(null);
     refreshPersistTarget();
     return;
@@ -100,6 +102,7 @@ export async function signOut() {
   try {
     const { error } = await supabase.auth.signOut();
     if (error) throw error;
+    disconnectSensorSocket();
     useCloudAuthStore.getState().setFromSession(null);
     refreshPersistTarget();
   } catch (e) {

@@ -1168,29 +1168,23 @@ export default function TopToolbar({ workspace, previewCode = '', onAfterProject
         </div>
 
         <div className="flex min-w-0 flex-1 items-center gap-2 px-2 sm:gap-3 sm:px-3">
-          <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-            <div className="flex min-w-0 flex-1 flex-col gap-0.5 sm:flex-row sm:items-center sm:gap-2">
-              <input
-                value={projectName}
-                onChange={(e) => setProjectName(e.target.value)}
-                className="min-w-0 w-full flex-1 rounded-md border border-studio-border/90 bg-[#181b20] px-2 py-1 text-[11px] text-slate-100 placeholder:text-slate-600 focus:border-studio-accent/50 focus:outline-none focus:ring-1 focus:ring-studio-accent/25 sm:min-w-[8rem] sm:text-xs lg:min-w-[10rem]"
-                placeholder="Project title"
-                title="Project title — saved with Save, Save As, and Export Project (.json); leading/trailing spaces are trimmed when saving"
-                aria-label="Project title"
-              />
-              <input
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                className="min-w-0 w-full rounded-md border border-transparent bg-[#14171b]/90 px-2 py-0.5 text-[10px] text-slate-400 placeholder:text-slate-600/80 focus:border-studio-border/50 focus:outline-none focus:ring-1 focus:ring-studio-accent/15 sm:flex-1 sm:text-[11px] lg:max-w-[20rem]"
-                placeholder="Notes (optional)"
-                title="Optional notes — stored in the same project file as the title when you Save or Export Project"
-                aria-label="Project notes"
-              />
-            </div>
-            <p className="hidden text-[9px] leading-tight text-studio-muted sm:block">
-              Title and notes are part of the project — included in Save, Save As, and Export Project (.json). Changing
-              board only does not clear them.
-            </p>
+          <div className="flex min-w-0 flex-1 flex-col gap-0.5 sm:flex-row sm:items-center sm:gap-2">
+            <input
+              value={projectName}
+              onChange={(e) => setProjectName(e.target.value)}
+              className="min-w-0 w-full flex-1 rounded-md border border-studio-border/90 bg-[#181b20] px-2 py-1 text-[11px] text-slate-100 placeholder:text-slate-600 focus:border-studio-accent/50 focus:outline-none focus:ring-1 focus:ring-studio-accent/25 sm:min-w-[8rem] sm:text-xs lg:min-w-[10rem]"
+              placeholder="Project title"
+              title="Project title — saved with Save, Save As, and Export Project (.json); leading/trailing spaces are trimmed when saving"
+              aria-label="Project title"
+            />
+            <input
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="min-w-0 w-full rounded-md border border-transparent bg-[#14171b]/90 px-2 py-0.5 text-[10px] text-slate-400 placeholder:text-slate-600/80 focus:border-studio-border/50 focus:outline-none focus:ring-1 focus:ring-studio-accent/15 sm:flex-1 sm:text-[11px] lg:max-w-[20rem]"
+              placeholder="Notes (optional)"
+              title="Optional notes — stored in the same project file as the title when you Save or Export Project"
+              aria-label="Project notes"
+            />
           </div>
 
           <div className="flex shrink-0 items-center gap-0.5 sm:gap-1">

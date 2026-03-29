@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import { fetchDeviceLatest, fetchDeviceList } from '../api/readingApi.js';
-import { getSensorSocket } from '../api/socketClient.js';
-import { useAuthStore } from '../store/authStore.js';
+import { connectSensorSocket, getSensorSocket } from '../api/socketClient.js';
+import { useDashboardSession } from './useDashboardSession.js';
 
 /**
  * Load all devices + latest reading each; subscribe to sensor:update for live refresh.
  * @returns {{ devices: object[], latestById: Record<string, { data: object, createdAt: string, sensorType: string }|null>, loading: boolean, error: string|null, refetch: () => Promise<void> }}
  */
 export function useLiveSensorData() {
-  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const { isAuthenticated } = useDashboardSession();
   const [devices, setDevices] = useState(/** @type {object[]} */ ([]));
   const [latestById, setLatestById] = useState(/** @type {Record<string, object|null>} */ ({}));
   const [loading, setLoading] = useState(true);
@@ -55,32 +55,40 @@ export function useLiveSensorData() {
   useEffect(() => {
     if (!isAuthenticated) return undefined;
 
-    const s = getSensorSocket();
-    if (!s) return undefined;
+    const ac = new AbortController();
 
-    const onUpdate = (payload) => {
-      if (!payload?.deviceId) return;
-      setLatestById((prev) => ({
-        ...prev,
-        [payload.deviceId]: {
-          data: payload.data ?? {},
-          sensorType: payload.sensorType,
-          createdAt: payload.createdAt,
-        },
-      }));
-      setDevices((prev) =>
-        prev.map((d) =>
-          d.deviceId === payload.deviceId
-            ? { ...d, status: 'online', lastSeenAt: payload.createdAt }
-            : d,
-        ),
-      );
-    };
+    void (async () => {
+      await connectSensorSocket();
+      if (ac.signal.aborted) return;
+      const s = getSensorSocket();
+      if (!s) return;
 
-    s.on('sensor:update', onUpdate);
-    return () => {
-      s.off('sensor:update', onUpdate);
-    };
+      const onUpdate = (payload) => {
+        if (!payload?.deviceId) return;
+        setLatestById((prev) => ({
+          ...prev,
+          [payload.deviceId]: {
+            data: payload.data ?? {},
+            sensorType: payload.sensorType,
+            createdAt: payload.createdAt,
+          },
+        }));
+        setDevices((prev) =>
+          prev.map((d) =>
+            d.deviceId === payload.deviceId
+              ? { ...d, status: 'online', lastSeenAt: payload.createdAt }
+              : d,
+          ),
+        );
+      };
+
+      s.on('sensor:update', onUpdate);
+      ac.signal.addEventListener('abort', () => {
+        s.off('sensor:update', onUpdate);
+      });
+    })();
+
+    return () => ac.abort();
   }, [isAuthenticated]);
 
   return { devices, latestById, loading, error, refetch };

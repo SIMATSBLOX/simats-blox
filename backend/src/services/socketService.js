@@ -6,26 +6,24 @@ export function setSocketIO(server) {
   io = server;
 }
 
-export function getSocketIO() {
-  return io;
-}
-
 /**
  * @param {{
  *   ownerUserId: string;
  *   deviceId: string;
  *   sensorType: string;
  *   data: object;
- *   createdAt: Date;
+ *   createdAt: Date | string;
  * }} payload
  */
 export function emitSensorUpdate(payload) {
   if (!io) return;
+  const created =
+    payload.createdAt instanceof Date ? payload.createdAt : new Date(payload.createdAt);
   const evt = {
     deviceId: payload.deviceId,
     sensorType: payload.sensorType,
     data: payload.data,
-    createdAt: payload.createdAt.toISOString(),
+    createdAt: created.toISOString(),
   };
   if (payload.ownerUserId) {
     io.to(`user:${payload.ownerUserId}`).emit('sensor:update', evt);

@@ -1,7 +1,0 @@
-{
-  "name": "simats-sensor-backend",
-  "private": true,
-  "version": "0.1.0",
-  "description": "Sensor hub sources live under src/ and are started via the repo root `npm run server` (see ../server/index.js).",
-  "type": "module"
-}

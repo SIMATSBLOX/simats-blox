@@ -1,9 +1,8 @@
-import { Device } from '../models/Device.js';
-import { SensorReading } from '../models/SensorReading.js';
 import { validateReadingPayload } from '../utils/validateReadingPayload.js';
 import { emitSensorUpdate } from '../services/socketService.js';
+import { getSensorRepository } from '../../../server/repositories/getSensorRepository.js';
 
-export async function receiveReading(req, res) {
+export function receiveReading(req, res) {
   try {
     const parsed = validateReadingPayload(req.body);
     if (!parsed.ok) {
@@ -30,18 +29,12 @@ export async function receiveReading(req, res) {
       });
     }
 
-    const doc = await SensorReading.create({
+    const doc = getSensorRepository().insertSensorReading({
       ownerUserId,
       deviceId,
       sensorType,
       data,
     });
-
-    const now = new Date();
-    await Device.updateOne(
-      { deviceId },
-      { $set: { lastSeenAt: now, status: 'online' } },
-    );
 
     emitSensorUpdate({
       ownerUserId,
@@ -53,7 +46,7 @@ export async function receiveReading(req, res) {
 
     res.status(201).json({
       ok: true,
-      readingId: doc._id,
+      readingId: doc.id,
       createdAt: doc.createdAt,
     });
   } catch (e) {

@@ -1,6 +1,7 @@
 import { io } from 'socket.io-client';
-import { readAuthTokenFromStorage } from '../lib/authStorage.js';
+import { getDashboardAccessToken } from '../lib/dashboardAuthToken.js';
 import { getSocketIoUrl } from '../lib/apiConfig.js';
+import { getSupabaseClient, isSupabaseConfigured } from '../lib/supabaseClient.js';
 
 /** @type {import('socket.io-client').Socket | null} */
 let socket = null;
@@ -9,13 +10,40 @@ let lastAuthToken = null;
 /** @type {string | null} */
 let lastSocketUrl = null;
 
+/** @type {boolean} */
+let authHooksAttached = false;
+
 /**
- * Socket.IO client with JWT in `handshake.auth.token` (server joins `user:<sub>`).
- * Reconnects when the stored session token or API origin configuration changes.
+ * Reconnect when Express or Supabase session changes (lazy to avoid circular import with authStore).
  */
-export function getSensorSocket() {
+function ensureDashboardAuthHooks() {
+  if (authHooksAttached) return;
+  authHooksAttached = true;
+
+  import('../store/authStore.js').then(({ useAuthStore }) => {
+    useAuthStore.subscribe(() => {
+      queueMicrotask(() => void connectSensorSocket());
+    });
+  });
+
+  if (isSupabaseConfigured()) {
+    const sb = getSupabaseClient();
+    if (sb) {
+      sb.auth.onAuthStateChange(() => {
+        queueMicrotask(() => void connectSensorSocket());
+      });
+    }
+  }
+}
+
+/**
+ * Ensures Socket.IO uses the same Bearer token as {@link ../api/readingApi.js} (Supabase first, then Express).
+ */
+export async function connectSensorSocket() {
   if (typeof window === 'undefined') return null;
-  const token = readAuthTokenFromStorage();
+  ensureDashboardAuthHooks();
+
+  const { token } = await getDashboardAccessToken();
   const url = getSocketIoUrl();
 
   if (!token) {
@@ -30,20 +58,29 @@ export function getSensorSocket() {
 
   if (!url) return null;
 
-  if (!socket || lastAuthToken !== token || lastSocketUrl !== url) {
-    if (socket) {
-      socket.disconnect();
-      socket = null;
-    }
-    lastAuthToken = token;
-    lastSocketUrl = url;
-    socket = io(url, {
-      path: '/socket.io',
-      transports: ['websocket', 'polling'],
-      auth: { token },
-      autoConnect: true,
-    });
+  if (socket && lastAuthToken === token && lastSocketUrl === url) {
+    return socket;
   }
+
+  if (socket) {
+    socket.disconnect();
+    socket = null;
+  }
+  lastAuthToken = token;
+  lastSocketUrl = url;
+  socket = io(url, {
+    path: '/socket.io',
+    transports: ['websocket', 'polling'],
+    auth: { token },
+    autoConnect: true,
+  });
+  return socket;
+}
+
+/**
+ * Current socket after {@link connectSensorSocket} has run. Prefer awaiting `connectSensorSocket` in effects.
+ */
+export function getSensorSocket() {
   return socket;
 }
 
