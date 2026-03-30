@@ -73,7 +73,7 @@ export async function fetchReadingsHistoryLog(opts = {}) {
 
 /**
  * Register a device for the signed-in user. Returns `apiKey` once — store it on the ESP32.
- * @param {{ deviceId: string, name: string, sensorType: string, location?: string, apiKey?: string }} body
+ * @param {{ deviceId: string, sensorType: string, name?: string, location?: string, apiKey?: string }} body
  */
 export async function registerDevice(body) {
   const res = await fetch(`${API_PREFIX}/devices`, {

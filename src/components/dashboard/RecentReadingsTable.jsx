@@ -1,4 +1,5 @@
-import { formatSensorValue, getFieldsForSensorType } from '../../lib/sensorDashboardConfig.js';
+import { useMemo } from 'react';
+import { formatSensorValue, getDashboardFieldDefs } from '../../lib/sensorDashboardConfig.js';
 
 function formatTime(iso) {
   if (!iso) return '—';
@@ -13,7 +14,7 @@ function formatTime(iso) {
  * @param {{ readings: object[], sensorType: string, deviceLabel?: string }} props
  */
 export default function RecentReadingsTable({ readings, sensorType, deviceLabel }) {
-  const fields = getFieldsForSensorType(sensorType);
+  const fields = useMemo(() => getDashboardFieldDefs(sensorType, readings), [sensorType, readings]);
   if (!readings?.length) {
     return (
       <div className="rounded-lg border border-studio-border/60 border-dashed px-4 py-6 text-center text-sm text-studio-muted">

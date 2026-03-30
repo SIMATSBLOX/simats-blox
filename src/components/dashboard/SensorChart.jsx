@@ -7,7 +7,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { getFieldsForSensorType } from '../../lib/sensorDashboardConfig.js';
+import { getChartNumericFieldDefs } from '../../lib/sensorDashboardConfig.js';
 
 function formatTick(iso) {
   if (!iso) return '';
@@ -24,7 +24,7 @@ function formatTick(iso) {
  * @param {{ readings: { data?: object, createdAt?: string }[], sensorType: string }} props
  */
 export default function SensorChart({ readings, sensorType }) {
-  const fields = getFieldsForSensorType(sensorType).filter((f) => f.kind !== 'boolean');
+  const fields = getChartNumericFieldDefs(sensorType, readings);
   if (fields.length === 0 || !readings?.length) {
     return (
       <div className="rounded-lg border border-studio-border/60 border-dashed bg-studio-panel/40 px-4 py-8 text-center text-sm text-studio-muted">

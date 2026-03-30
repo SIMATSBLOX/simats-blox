@@ -109,14 +109,15 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-studio-bg text-slate-100">
-      <header className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-3 border-b border-studio-border bg-[#22262c]/95 px-4 py-3 backdrop-blur">
-        <div>
-          <h1 className="text-lg font-semibold tracking-tight">My sensors</h1>
-          <p className="text-[11px] text-studio-muted">
-            Signed in as <span className="text-slate-400">{login ?? '—'}</span> · Live updates
+      <header className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-2 border-b border-studio-border/90 bg-[#22262c]/95 px-3 py-2 backdrop-blur sm:px-4">
+        <div className="min-w-0">
+          <h1 className="text-base font-semibold tracking-tight sm:text-lg">My sensors</h1>
+          <p className="truncate text-[10px] text-studio-muted sm:text-[11px]">
+            <span className="text-slate-400">{login ?? '—'}</span>
+            <span className="text-studio-muted"> · live</span>
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-shrink-0 flex-wrap items-center gap-1.5">
           <Button type="button" variant="ghost" title="Refresh" onClick={() => refreshAll()}>
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
           </Button>
@@ -132,8 +133,8 @@ export default function DashboardPage() {
 
       <AddSensorModal open={addSensorOpen} onClose={() => setAddSensorOpen(false)} onCreated={() => void refetch()} />
 
-      <main className="mx-auto max-w-5xl px-4 py-6">
-        <nav className="mb-6 flex flex-wrap gap-1 border-b border-studio-border/90" aria-label="Sensor workspace">
+      <main className="mx-auto max-w-5xl px-3 py-4 sm:px-4 sm:py-5">
+        <nav className="mb-4 flex flex-wrap gap-0.5 border-b border-studio-border/80" aria-label="Sensor workspace">
           {TABS.map(({ id, label }) => {
             const active = tab === id;
             return (
@@ -142,7 +143,7 @@ export default function DashboardPage() {
                 type="button"
                 onClick={() => goTab(/** @type {'setup' | 'devices' | 'logs'} */ (id))}
                 className={[
-                  '-mb-px border-b-2 px-3 py-2 text-sm font-medium transition-colors',
+                  '-mb-px border-b-2 px-2.5 py-1.5 text-[13px] font-medium transition-colors sm:px-3 sm:text-sm',
                   active
                     ? 'border-studio-accent text-studio-accent'
                     : 'border-transparent text-studio-muted hover:text-slate-300',
@@ -155,7 +156,7 @@ export default function DashboardPage() {
         </nav>
 
         {tab === 'setup' ? (
-          <div className="space-y-5">
+          <div className="space-y-4">
             <p className="text-sm text-studio-muted">
               Optional tools: connect the Blockly IDE’s serial forwarding, or register a sensor with your own ID (for
               workshops).
@@ -173,11 +174,11 @@ export default function DashboardPage() {
         ) : null}
 
         {tab === 'devices' ? (
-          <div className="space-y-5">
+          <div className="space-y-4">
             {showError}
             {loading && !devices.length ? <p className="text-sm text-studio-muted">Loading your sensors…</p> : null}
             {!loading && !error && devices.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-studio-border/80 bg-studio-panel/50 px-6 py-10 text-center">
+              <div className="rounded-lg border border-dashed border-studio-border/70 bg-studio-panel/50 px-4 py-8 text-center sm:px-6">
                 <p className="text-sm font-medium text-slate-200">No sensors yet</p>
                 <p className="mt-2 text-sm text-studio-muted">
                   Add one to get ready-made ESP32 code and a live dashboard.
@@ -193,11 +194,10 @@ export default function DashboardPage() {
             ) : null}
             {devices.length > 0 ? (
               <section>
-                <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                <div className="mb-3">
                   <h2 className="text-sm font-semibold tracking-tight text-slate-200">Your sensors</h2>
-                  {isAuthenticated ? <AddSensorTrigger onClick={() => setAddSensorOpen(true)} /> : null}
                 </div>
-                <div className="grid gap-4">
+                <div className="grid gap-3">
                   {devices.map((d) => (
                     <DeviceStatusCard
                       key={d.deviceId}

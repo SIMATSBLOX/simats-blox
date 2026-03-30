@@ -6,7 +6,7 @@ import DeviceHardwareSampleCode from './DeviceHardwareSampleCode.jsx';
 import { deleteDevice } from '../../api/readingApi.js';
 import { getStoredDeviceApiKey } from '../../lib/deviceKeyStorage.js';
 import { DEVICE_OFFLINE_AFTER_MS, getDevicePresence } from '../../lib/devicePresence.js';
-import { formatSensorValue, getFieldsForSensorType } from '../../lib/sensorDashboardConfig.js';
+import { formatSensorValue, getDashboardFieldDefs } from '../../lib/sensorDashboardConfig.js';
 import { friendlySensorTypeLabel } from '../../lib/sensorAddPresets.js';
 import { formatExampleReadingJson } from '../../lib/serialBridgeExamples.js';
 import { getReadingsPostUrl } from '../../lib/apiConfig.js';
@@ -36,7 +36,7 @@ export default function DeviceStatusCard({ device, latest, onDeviceDeleted, onAf
   usePresenceTick();
   const [deleting, setDeleting] = useState(false);
   const regen = useDeviceKeyRegeneration(device.deviceId, device.name, onAfterRegenerate);
-  const fields = getFieldsForSensorType(device.sensorType);
+  const fields = getDashboardFieldDefs(device.sensorType, latest ? [latest] : []);
   const data = latest?.data ?? {};
   const hasStoredKey = Boolean(getStoredDeviceApiKey(device.deviceId));
 
@@ -100,19 +100,18 @@ export default function DeviceStatusCard({ device, latest, onDeviceDeleted, onAf
   }
 
   return (
-    <div className="rounded-xl border border-studio-border bg-[#1e2228] p-4 shadow-md">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+    <div className="rounded-lg border border-studio-border/90 bg-[#1e2228] p-3">
+      <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <Activity className="h-4 w-4 shrink-0 text-studio-muted" aria-hidden />
+          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0">
             <Link
               to={`/devices/${encodeURIComponent(device.deviceId)}`}
-              className="text-base font-semibold text-studio-accent hover:text-studio-accentHover"
+              className="text-[15px] font-semibold leading-snug text-studio-accent hover:text-studio-accentHover"
             >
               {device.name}
             </Link>
           </div>
-          <p className="mt-1 text-xs text-slate-400">
+          <p className="mt-0.5 text-[11px] text-slate-400">
             {friendlySensorTypeLabel(device.sensorType)}
             {device.location ? (
               <>
@@ -122,22 +121,34 @@ export default function DeviceStatusCard({ device, latest, onDeviceDeleted, onAf
             ) : null}
           </p>
         </div>
-        <div className="shrink-0 text-right">
-          <span
-            className={`inline-block rounded px-2 py-0.5 text-[11px] font-medium ${
-              presence.isOnline
-                ? 'bg-emerald-900/50 text-emerald-300'
-                : 'bg-slate-700/60 text-studio-muted'
-            }`}
-            title={
-              presence.isOnline
-                ? `Seen within the last ${idleHint}`
-                : `No reading for ${idleHint} — offline`
-            }
+        <div className="flex shrink-0 items-start gap-1">
+          <div className="text-right">
+            <span
+              className={`inline-block rounded px-1.5 py-0.5 text-[10px] font-medium ${
+                presence.isOnline
+                  ? 'bg-emerald-900/50 text-emerald-300'
+                  : 'bg-slate-700/60 text-studio-muted'
+              }`}
+              title={
+                presence.isOnline
+                  ? `Seen within the last ${idleHint}`
+                  : `No reading for ${idleHint} — offline`
+              }
+            >
+              {presence.isOnline ? 'Online' : 'Offline'}
+            </span>
+            <div className="mt-0.5 text-[10px] text-studio-muted">Last {formatSeen(lastSeenDisplay)}</div>
+          </div>
+          <button
+            type="button"
+            className="rounded p-1 text-slate-500 hover:bg-red-950/35 hover:text-red-300 disabled:opacity-40"
+            disabled={deleting}
+            title="Remove sensor"
+            aria-label="Remove sensor"
+            onClick={() => void handleDelete()}
           >
-            {presence.isOnline ? 'Online' : 'Offline'}
-          </span>
-          <div className="mt-1 text-[10px] text-studio-muted">Last seen {formatSeen(lastSeenDisplay)}</div>
+            <Trash2 className="h-3.5 w-3.5" aria-hidden />
+          </button>
         </div>
       </div>
 
@@ -159,7 +170,7 @@ export default function DeviceStatusCard({ device, latest, onDeviceDeleted, onAf
         </div>
       ) : null}
 
-      <div className="mt-3 grid gap-2 sm:grid-cols-2">
+      <div className="mt-2.5 grid gap-1.5 sm:grid-cols-2">
         {fields.map((f) => (
           <LiveStatCard
             key={f.key}
@@ -170,7 +181,7 @@ export default function DeviceStatusCard({ device, latest, onDeviceDeleted, onAf
         ))}
       </div>
 
-      <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-studio-border/50 pt-3">
+      <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-studio-border/40 pt-2.5">
         <Link
           to={`/devices/${encodeURIComponent(device.deviceId)}`}
           className="inline-flex items-center justify-center gap-1 rounded border border-studio-border bg-studio-panel px-2.5 py-1 text-[11px] font-medium text-slate-200 hover:bg-[#2c323a]"
@@ -194,10 +205,10 @@ export default function DeviceStatusCard({ device, latest, onDeviceDeleted, onAf
       </div>
 
       <details
-        className="mt-3 rounded-lg border border-studio-border/60 bg-[#1a1d22]/80 px-2 py-1"
+        className="mt-2.5 rounded-md border border-studio-border/50 bg-[#1a1d22]/70 px-1.5 py-0.5"
         data-device-advanced={device.deviceId}
       >
-        <summary className="cursor-pointer select-none px-1 py-2 text-[11px] font-medium text-slate-400 hover:text-slate-300">
+        <summary className="cursor-pointer select-none px-1 py-1.5 text-[10px] font-medium text-slate-500 hover:text-slate-300">
           Advanced · IDs, keys &amp; tools
         </summary>
         <div className="space-y-3 border-t border-studio-border/50 px-1 pb-3 pt-3 text-[11px] text-studio-muted">
@@ -233,16 +244,6 @@ export default function DeviceStatusCard({ device, latest, onDeviceDeleted, onAf
             >
               <KeyRound className="h-3 w-3" aria-hidden />
               {regen.busy ? 'Working…' : 'New device key'}
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              className="!text-[10px] text-red-300/90"
-              disabled={deleting}
-              onClick={() => void handleDelete()}
-            >
-              <Trash2 className="mr-1 inline h-3 w-3" aria-hidden />
-              {deleting ? 'Removing…' : 'Remove sensor'}
             </Button>
           </div>
           <DeviceHardwareSampleCode

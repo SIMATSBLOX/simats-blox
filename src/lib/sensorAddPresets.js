@@ -41,8 +41,12 @@ export function getSensorPresetByType(sensorType) {
   return SENSOR_ADD_PRESETS.find((p) => p.sensorType === sensorType) ?? null;
 }
 
+/** Built-in API type for hardware not in the preset list (flat `data` object in POST /api/readings). */
+export const CUSTOM_SENSOR_TYPE = 'custom';
+
 /** @param {string} sensorType */
 export function friendlySensorTypeLabel(sensorType) {
+  if (sensorType === CUSTOM_SENSOR_TYPE) return 'Custom sensor';
   return getSensorPresetByType(sensorType)?.title ?? sensorType;
 }
 

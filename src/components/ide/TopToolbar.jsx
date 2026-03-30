@@ -834,7 +834,7 @@ export default function TopToolbar({ workspace, previewCode = '', onAfterProject
 
   return (
     <>
-      <header className="flex min-h-11 shrink-0 items-center gap-0 border-b border-studio-border bg-[#1e2228] px-2 py-1 sm:px-3">
+      <header className="flex min-h-11 shrink-0 items-center gap-0 border-b border-studio-border/90 bg-[#1e2228] px-2 py-0.5 sm:px-3">
         <div
           className="flex shrink-0 items-center gap-2 border-r border-studio-border/80 pr-2 sm:gap-2.5 sm:pr-3"
           title="SIMATS BLOX — hardware block workspace"
@@ -858,7 +858,7 @@ export default function TopToolbar({ workspace, previewCode = '', onAfterProject
           </span>
         </div>
 
-        <nav className="flex shrink-0 items-center gap-0.5 border-r border-studio-border/80 px-2 text-xs sm:px-3 sm:text-[11px]">
+        <nav className="flex shrink-0 items-center gap-0 border-r border-studio-border/80 px-1.5 text-xs sm:px-2.5 sm:text-[11px]">
           <ToolbarMenu label="File">
             <button
               type="button"
@@ -1170,8 +1170,8 @@ export default function TopToolbar({ workspace, previewCode = '', onAfterProject
           </Button>
         </div>
 
-        <div className="flex min-w-0 flex-1 items-center gap-2 px-2 sm:gap-3 sm:px-3">
-          <div className="flex min-w-0 flex-1 flex-col gap-0.5 sm:flex-row sm:items-center sm:gap-2">
+        <div className="flex min-w-0 flex-1 items-center gap-2 px-2 sm:gap-2.5 sm:px-3">
+          <div className="flex min-w-0 flex-1 flex-col gap-1 sm:flex-row sm:items-center sm:gap-2">
             <input
               value={projectName}
               onChange={(e) => setProjectName(e.target.value)}
@@ -1180,14 +1180,19 @@ export default function TopToolbar({ workspace, previewCode = '', onAfterProject
               title="Project title — saved with Save, Save As, and Export Project (.json); leading/trailing spaces are trimmed when saving"
               aria-label="Project title"
             />
-            <input
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className="min-w-0 w-full rounded-md border border-transparent bg-[#14171b]/90 px-2 py-0.5 text-[10px] text-slate-400 placeholder:text-slate-600/80 focus:border-studio-border/50 focus:outline-none focus:ring-1 focus:ring-studio-accent/15 sm:flex-1 sm:text-[11px] lg:max-w-[20rem]"
-              placeholder="Notes (optional)"
-              title="Optional notes — stored in the same project file as the title when you Save or Export Project"
-              aria-label="Project notes"
-            />
+            <details className="min-w-0 w-full sm:w-auto sm:max-w-[20rem] lg:max-w-[22rem]">
+              <summary className="cursor-pointer list-none text-[10px] text-studio-muted hover:text-slate-400 [&::-webkit-details-marker]:hidden">
+                Notes (optional)
+              </summary>
+              <input
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                className="mt-1 min-w-0 w-full rounded-md border border-studio-border/60 bg-[#14171b]/90 px-2 py-1 text-[10px] text-slate-400 placeholder:text-slate-600/80 focus:border-studio-border/50 focus:outline-none focus:ring-1 focus:ring-studio-accent/15 sm:text-[11px]"
+                placeholder="Short notes for this project…"
+                title="Optional notes — stored with the title when you Save or Export Project"
+                aria-label="Project notes"
+              />
+            </details>
           </div>
 
           <div className="flex shrink-0 items-center gap-0.5 sm:gap-1">

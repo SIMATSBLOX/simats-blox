@@ -21,7 +21,7 @@ export default function IdeDeviceContextBanner({ deviceId, deviceName, sensorTyp
 
   return (
     <div
-      className="shrink-0 border-b border-studio-border bg-[#252a31]/95 px-3 py-2.5 text-[11px] text-slate-300 backdrop-blur-sm"
+      className="shrink-0 border-b border-studio-border/90 bg-[#252a31]/95 px-3 py-2 text-[11px] text-slate-300 backdrop-blur-sm"
       role="region"
       aria-label="Sensor setup hint"
     >
@@ -32,9 +32,9 @@ export default function IdeDeviceContextBanner({ deviceId, deviceName, sensorTyp
             {typeLine ? <span className="text-studio-muted">· {typeLine}</span> : null}
           </div>
 
-          <SensorDataPathsHint variant="banner" className="mt-2" />
+          <SensorDataPathsHint variant="banner" className="mt-1.5" />
 
-          <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1.5 text-[10px] leading-tight">
+          <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] leading-tight">
             <span className="inline-flex items-center gap-1 rounded bg-emerald-950/45 px-1.5 py-0.5 font-medium text-emerald-300/95">
               <Check className="h-3 w-3 shrink-0" aria-hidden />
               Sensor linked

@@ -27,6 +27,8 @@ export function exampleReadingBodyForSensor(sensorType, deviceId) {
       return { deviceId: id, sensorType: 'lm35', data: { temperature: 31.0 } };
     case 'ir_sensor':
       return { deviceId: id, sensorType: 'ir_sensor', data: { irDetected: false } };
+    case 'custom':
+      return { deviceId: id, sensorType: 'custom', data: { reading: 42, note: 'replace with your fields' } };
     default:
       return null;
   }

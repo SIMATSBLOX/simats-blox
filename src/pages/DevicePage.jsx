@@ -12,7 +12,7 @@ import SensorChart from '../components/dashboard/SensorChart.jsx';
 import RecentReadingsTable from '../components/dashboard/RecentReadingsTable.jsx';
 import Button from '../components/ui/Button.jsx';
 import { getDevicePresence } from '../lib/devicePresence.js';
-import { formatSensorValue, getFieldsForSensorType } from '../lib/sensorDashboardConfig.js';
+import { formatSensorValue, getDashboardFieldDefs } from '../lib/sensorDashboardConfig.js';
 import { friendlySensorTypeLabel } from '../lib/sensorAddPresets.js';
 import { supportsDeviceHardwareSample } from '../lib/deviceHardwareSamples.js';
 
@@ -50,7 +50,7 @@ export default function DevicePage() {
 
   const latest = readings[0] ?? null;
   const sensorType = device?.sensorType ?? latest?.sensorType ?? '';
-  const fields = useMemo(() => getFieldsForSensorType(sensorType), [sensorType]);
+  const fields = useMemo(() => getDashboardFieldDefs(sensorType, readings), [sensorType, readings]);
   const data = latest?.data ?? {};
   const presence = getDevicePresence(device, latest);
   const lastSeenDisplay = presence.lastActivityIso ?? device?.lastSeenAt;

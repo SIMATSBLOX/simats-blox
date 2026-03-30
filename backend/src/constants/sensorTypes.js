@@ -5,4 +5,6 @@ export const SENSOR_TYPES = [
   'ultrasonic',
   'ir_sensor',
   'lm35',
+  /** Flat JSON object in `data` (numbers, strings, booleans only). */
+  'custom',
 ];

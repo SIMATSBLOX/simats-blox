@@ -7,7 +7,7 @@ import { useIdeStore } from '../../store/ideStore.js';
 export default function ToolboxPanelTabs({ value, onChange }) {
   const boardId = useIdeStore((s) => s.boardId);
   return (
-    <div className="flex h-[30px] shrink-0 items-stretch border-b border-studio-border bg-[#1c1f24] px-1.5 py-1">
+    <div className="flex h-[28px] shrink-0 items-stretch border-b border-studio-border bg-[#1c1f24] px-1 py-0.5">
       <div
         className="inline-flex h-full w-full max-w-[200px] rounded-md border border-studio-border/80 bg-[#14171b] p-0.5"
         role="tablist"

@@ -1,4 +1,4 @@
-import { formatSensorValue, getFieldsForSensorType } from '../../lib/sensorDashboardConfig.js';
+import { formatSensorValue, getDashboardFieldDefs } from '../../lib/sensorDashboardConfig.js';
 
 function formatTime(iso) {
   if (!iso) return '—';
@@ -10,7 +10,7 @@ function formatTime(iso) {
 }
 
 function formatValuesLine(sensorType, data) {
-  const fields = getFieldsForSensorType(sensorType);
+  const fields = getDashboardFieldDefs(sensorType, [{ data }]);
   if (!fields.length) {
     try {
       return JSON.stringify(data ?? {});

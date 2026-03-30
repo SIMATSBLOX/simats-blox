@@ -1,7 +1,7 @@
 import { getReadingsPostUrl } from './apiConfig.js';
 import { getSensorPresetByType } from './sensorAddPresets.js';
 
-const SUPPORTED_SENSOR_TYPES = new Set(['dht11', 'soil_moisture', 'ultrasonic', 'ir_sensor', 'lm35']);
+const SUPPORTED_SENSOR_TYPES = new Set(['dht11', 'soil_moisture', 'ultrasonic', 'ir_sensor', 'lm35', 'custom']);
 
 /** True when we can emit complete firmware (real device key only — no placeholders for learners). */
 export function hasUsableDeviceKeyForSamples(apiKey) {
@@ -39,7 +39,12 @@ export function getEsp32Samples(sensorType, ctx) {
     apiKey: String(ctx.apiKey).trim(),
   };
   const preset = getSensorPresetByType(sensorType);
-  const label = preset ? `${preset.title} — ${preset.subtitle}` : sensorType;
+  const label =
+    sensorType === 'custom'
+      ? 'Custom sensor — your field names in data'
+      : preset
+        ? `${preset.title} — ${preset.subtitle}`
+        : sensorType;
   switch (sensorType) {
     case 'dht11':
       return {
@@ -70,6 +75,12 @@ export function getEsp32Samples(sensorType, ctx) {
         label,
         arduino: buildEsp32Lm35Arduino(base),
         micropython: buildEsp32Lm35MicroPython(base),
+      };
+    case 'custom':
+      return {
+        label,
+        arduino: buildEsp32CustomArduino(base),
+        micropython: buildEsp32CustomMicroPython(base),
       };
     default:
       return null;
@@ -628,6 +639,103 @@ adc = ADC(Pin(35))
 adc.atten(ADC.ATTN_11DB)
 while True:
     body = json.dumps({"deviceId": DEVICE_ID, "sensorType": "lm35", "data": {"temperature": temp_c(adc)}})
+    r = urequests.post(READINGS_URL, data=body, headers={"Content-Type": "application/json", "x-device-key": DEVICE_KEY})
+    r.close()
+    time.sleep(3)
+`;
+}
+
+/**
+ * @param {{
+ *   readingsUrl?: string;
+ *   deviceId: string;
+ *   apiKey: string;
+ * }} p
+ */
+function buildEsp32CustomArduino(p) {
+  const readUrl = p.readingsUrl || getReadingsPostUrl();
+  const deviceId = String(p.deviceId ?? '').trim() || 'your_device_id';
+  const key = String(p.apiKey ?? '').trim();
+  return `/*
+ * SIMATS BLOX — ESP32 custom sensor → POST /api/readings (sensorType: "custom")
+ *
+ * Add your own keys under data (numbers, short strings, or true/false only — flat object, max 32 keys).
+ */
+#include <WiFi.h>
+#include <HTTPClient.h>
+#include <ArduinoJson.h>
+
+const char *WIFI_SSID = "YOUR_WIFI_SSID";
+const char *WIFI_PASS = "YOUR_WIFI_PASSWORD";
+const char *READINGS_URL = "${cEscape(readUrl)}";
+const char *DEVICE_ID = "${cEscape(deviceId)}";
+const char *DEVICE_KEY = "${cEscape(key)}";
+
+void setup() {
+  Serial.begin(115200);
+  delay(500);
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(WIFI_SSID, WIFI_PASS);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(400);
+  }
+}
+
+void loop() {
+  delay(3000);
+
+  WiFiClient client;
+  HTTPClient http;
+  http.begin(client, READINGS_URL);
+  http.addHeader("Content-Type", "application/json");
+  http.addHeader("x-device-key", DEVICE_KEY);
+
+  StaticJsonDocument<640> doc;
+  doc["deviceId"] = DEVICE_ID;
+  doc["sensorType"] = "custom";
+  JsonObject dataObj = doc.createNestedObject("data");
+  dataObj["reading"] = 42.0;  // replace with your sensor fields
+
+  String body;
+  serializeJson(doc, body);
+  http.POST(body);
+  http.end();
+}
+`;
+}
+
+/**
+ * @param {{
+ *   readingsUrl?: string;
+ *   deviceId: string;
+ *   apiKey: string;
+ * }} p
+ */
+function buildEsp32CustomMicroPython(p) {
+  const readUrl = p.readingsUrl || getReadingsPostUrl();
+  const deviceId = String(p.deviceId ?? '').trim() || 'your_device_id';
+  const key = String(p.apiKey ?? '').trim();
+  return `# SIMATS BLOX — ESP32 custom sensor → POST (sensorType: custom)
+try:
+    import urequests
+except ImportError:
+    import mip; mip.install("urequests"); import urequests
+import network, time, json
+
+READINGS_URL = "${pyEscapeDoubleQuoted(readUrl)}"
+DEVICE_ID = "${pyEscapeDoubleQuoted(deviceId)}"
+DEVICE_KEY = "${pyEscapeDoubleQuoted(key)}"
+WIFI_SSID = "YOUR_WIFI_SSID"
+WIFI_PASSWORD = "YOUR_WIFI_PASSWORD"
+
+def wifi():
+    w = network.WLAN(network.STA_IF); w.active(True); w.connect(WIFI_SSID, WIFI_PASSWORD)
+    while not w.isconnected(): time.sleep_ms(400)
+
+wifi()
+while True:
+    payload = {"deviceId": DEVICE_ID, "sensorType": "custom", "data": {"reading": 42}}
+    body = json.dumps(payload)
     r = urequests.post(READINGS_URL, data=body, headers={"Content-Type": "application/json", "x-device-key": DEVICE_KEY})
     r.close()
     time.sleep(3)

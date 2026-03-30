@@ -15,9 +15,9 @@ export async function registerDevice(req, res) {
     if (typeof deviceId !== 'string' || !deviceId.trim()) {
       return res.status(400).json({ error: 'deviceId is required.' });
     }
-    if (typeof name !== 'string' || !name.trim()) {
-      return res.status(400).json({ error: 'name is required.' });
-    }
+    const DEFAULT_DEVICE_NAME = 'Training kit';
+    const resolvedName =
+      typeof name === 'string' && name.trim().length > 0 ? name.trim() : DEFAULT_DEVICE_NAME;
     if (typeof sensorType !== 'string' || !TYPE_SET.has(sensorType)) {
       return res.status(400).json({ error: `sensorType must be one of: ${SENSOR_TYPES.join(', ')}.` });
     }
@@ -31,7 +31,7 @@ export async function registerDevice(req, res) {
     const inserted = await getSensorRepository().insertSensorDevice({
       ownerUserId: userId,
       deviceId: trimmedId,
-      name: name.trim(),
+      name: resolvedName,
       sensorType,
       location: typeof location === 'string' ? location.trim() : '',
       apiKey: key,

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { registerDevice } from '../../api/readingApi.js';
 import { rememberDeviceApiKey } from '../../lib/deviceKeyStorage.js';
-import { SENSOR_ADD_PRESETS } from '../../lib/sensorAddPresets.js';
+import { CUSTOM_SENSOR_TYPE, SENSOR_ADD_PRESETS } from '../../lib/sensorAddPresets.js';
 import Button from '../ui/Button.jsx';
 
 /**
@@ -10,7 +10,6 @@ import Button from '../ui/Button.jsx';
  */
 export default function RegisterDeviceForm({ onRegistered }) {
   const [deviceId, setDeviceId] = useState('');
-  const [name, setName] = useState('');
   const [sensorType, setSensorType] = useState(SENSOR_ADD_PRESETS[0]?.sensorType ?? 'dht11');
   const [location, setLocation] = useState('');
   const [busy, setBusy] = useState(false);
@@ -26,7 +25,6 @@ export default function RegisterDeviceForm({ onRegistered }) {
     try {
       const res = await registerDevice({
         deviceId: idForKey,
-        name: name.trim(),
         sensorType,
         location: location.trim(),
       });
@@ -34,7 +32,6 @@ export default function RegisterDeviceForm({ onRegistered }) {
       setNewKey(apiKey);
       if (apiKey && idForKey) rememberDeviceApiKey(idForKey, apiKey);
       setDeviceId('');
-      setName('');
       setLocation('');
       onRegistered?.();
     } catch (e2) {
@@ -80,17 +77,7 @@ export default function RegisterDeviceForm({ onRegistered }) {
               placeholder="e.g. lab_table_3"
             />
           </label>
-          <label className="block text-[11px] text-studio-muted">
-            Display name
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="mt-0.5 w-full rounded border border-studio-border bg-[#14171b] px-2 py-1.5 text-xs text-slate-200"
-              required
-              placeholder="Friendly name"
-            />
-          </label>
-          <label className="block text-[11px] text-studio-muted">
+          <label className="sm:col-span-2 block text-[11px] text-studio-muted">
             Sensor type
             <select
               value={sensorType}
@@ -102,6 +89,7 @@ export default function RegisterDeviceForm({ onRegistered }) {
                   {p.title} — {p.subtitle}
                 </option>
               ))}
+              <option value={CUSTOM_SENSOR_TYPE}>Custom — your own fields in data</option>
             </select>
           </label>
           <label className="sm:col-span-2 block text-[11px] text-studio-muted">
