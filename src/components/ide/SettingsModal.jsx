@@ -5,6 +5,7 @@ import { BOARD_LABEL, useIdeStore } from '../../store/ideStore.js';
 import { useAuthStore } from '../../store/authStore.js';
 import { useCloudAuthStore } from '../../store/cloudAuthStore.js';
 import { isSupabaseConfigured } from '../../lib/supabaseClient.js';
+import { isDemoSupabaseOnly } from '../../lib/demoSupabaseOnly.js';
 import * as supabaseAuth from '../../lib/authService.js';
 import { toast } from '../../lib/toast.js';
 import { formatSupabaseUserMessage, formatUserSafeError } from '../../lib/projectIo.js';
@@ -63,6 +64,8 @@ export default function SettingsModal({ open, onClose }) {
   const [formConfirm, setFormConfirm] = useState('');
   const [busy, setBusy] = useState(false);
   const [formError, setFormError] = useState('');
+
+  const demoOnly = isDemoSupabaseOnly();
 
   if (!open) return null;
 
@@ -204,10 +207,20 @@ export default function SettingsModal({ open, onClose }) {
             <section className="space-y-2">
               <SectionTitle>Account</SectionTitle>
               <p className="text-[11px] leading-relaxed text-studio-muted">
-                Sign in to save and open projects on Supabase or on the optional local dev API. With{' '}
-                <span className="text-slate-400">Local API</span> sign-in you also get{' '}
-                <span className="text-slate-400">Devices</span> in the toolbar for live ESP32 sensors. You can always use{' '}
-                <span className="text-slate-400">this browser only</span> without an account.
+                {demoOnly ? (
+                  <>
+                    <span className="text-amber-200/90">Demo mode (Supabase only):</span> sign in with Supabase for cloud
+                    projects, <span className="text-slate-400">Devices</span>, and dashboard APIs. Express / local API
+                    accounts are hidden.
+                  </>
+                ) : (
+                  <>
+                    Sign in to save and open projects on Supabase or on the optional local dev API. With{' '}
+                    <span className="text-slate-400">Local API</span> sign-in you also get{' '}
+                    <span className="text-slate-400">Devices</span> in the toolbar for live ESP32 sensors. You can always
+                    use <span className="text-slate-400">this browser only</span> without an account.
+                  </>
+                )}
               </p>
 
               <div className="space-y-2">
@@ -328,111 +341,123 @@ export default function SettingsModal({ open, onClose }) {
                 </Panel>
               </div>
 
-              <div className="space-y-2">
-                <p className="text-[10px] font-medium uppercase tracking-wide text-slate-500">
-                  Local API <span className="font-normal normal-case text-studio-muted">(optional, dev server)</span>
-                </p>
-                <Panel>
-                  {isAuthenticated ? (
-                    <div>
-                      <p className="text-[11px] font-medium text-sky-200/90">Signed in</p>
-                      <p className="mt-1 font-mono text-[11px] text-slate-200">{login}</p>
-                      <p className="mt-2 text-[10px] leading-relaxed text-studio-muted">
-                        Projects live in SQLite when the API is running (<span className="font-mono">npm run dev:full</span>
-                        ). Use <span className="text-slate-400">Devices</span> in the top bar for sensors.
-                      </p>
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        <Link
-                          to="/devices"
-                          onClick={() => onClose()}
-                          className="inline-flex items-center justify-center rounded px-2.5 py-1 text-xs font-medium text-white bg-studio-accent border border-transparent hover:bg-studio-accentHover"
-                        >
-                          Open Devices & sensors
-                        </Link>
-                        <Button variant="default" className="!text-xs" onClick={handleSignOut}>
-                          Sign out (local API)
+              {!demoOnly ? (
+                <div className="space-y-2">
+                  <p className="text-[10px] font-medium uppercase tracking-wide text-slate-500">
+                    Local API <span className="font-normal normal-case text-studio-muted">(optional, dev server)</span>
+                  </p>
+                  <Panel>
+                    {isAuthenticated ? (
+                      <div>
+                        <p className="text-[11px] font-medium text-sky-200/90">Signed in</p>
+                        <p className="mt-1 font-mono text-[11px] text-slate-200">{login}</p>
+                        <p className="mt-2 text-[10px] leading-relaxed text-studio-muted">
+                          Projects live in SQLite when the API is running (<span className="font-mono">npm run dev:full</span>
+                          ). Use <span className="text-slate-400">Devices</span> in the top bar for sensors.
+                        </p>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          <Link
+                            to="/devices"
+                            onClick={() => onClose()}
+                            className="inline-flex items-center justify-center rounded px-2.5 py-1 text-xs font-medium text-white bg-studio-accent border border-transparent hover:bg-studio-accentHover"
+                          >
+                            Open Devices & sensors
+                          </Link>
+                          <Button variant="default" className="!text-xs" onClick={handleSignOut}>
+                            Sign out (local API)
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <div className="flex gap-1.5">
+                          <button
+                            type="button"
+                            className={`rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors ${
+                              authMode === 'in'
+                                ? 'bg-studio-accent/25 text-slate-100'
+                                : 'text-studio-muted hover:bg-white/5'
+                            }`}
+                            onClick={() => {
+                              setAuthMode('in');
+                              setFormError('');
+                            }}
+                          >
+                            Sign in
+                          </button>
+                          <button
+                            type="button"
+                            className={`rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors ${
+                              authMode === 'up'
+                                ? 'bg-studio-accent/25 text-slate-100'
+                                : 'text-studio-muted hover:bg-white/5'
+                            }`}
+                            onClick={() => {
+                              setAuthMode('up');
+                              setFormError('');
+                            }}
+                          >
+                            Sign up
+                          </button>
+                        </div>
+                        <label className="block text-[10px] text-studio-muted" htmlFor="set-login">
+                          Username or email
+                        </label>
+                        <input
+                          id="set-login"
+                          autoComplete="username"
+                          value={formLogin}
+                          onChange={(e) => setFormLogin(e.target.value)}
+                          className={inputCls}
+                        />
+                        <label className="block text-[10px] text-studio-muted" htmlFor="set-password">
+                          Password
+                        </label>
+                        <input
+                          id="set-password"
+                          type="password"
+                          autoComplete={authMode === 'up' ? 'new-password' : 'current-password'}
+                          value={formPassword}
+                          onChange={(e) => setFormPassword(e.target.value)}
+                          className={inputCls}
+                        />
+                        {authMode === 'up' ? (
+                          <>
+                            <label className="block text-[10px] text-studio-muted" htmlFor="set-confirm">
+                              Confirm password
+                            </label>
+                            <input
+                              id="set-confirm"
+                              type="password"
+                              autoComplete="new-password"
+                              value={formConfirm}
+                              onChange={(e) => setFormConfirm(e.target.value)}
+                              className={inputCls}
+                            />
+                          </>
+                        ) : null}
+                        {formError ? <p className="text-[11px] text-red-300/90">{formError}</p> : null}
+                        <Button variant="primary" className="!text-xs" disabled={busy} onClick={() => void submitAuth()}>
+                          {busy ? 'Please wait…' : authMode === 'up' ? 'Create account' : 'Sign in'}
                         </Button>
+                        <p className="text-[10px] leading-relaxed text-studio-muted">
+                          Server must be running. Tokens stay in this browser; passwords are hashed on the server.
+                        </p>
                       </div>
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      <div className="flex gap-1.5">
-                        <button
-                          type="button"
-                          className={`rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors ${
-                            authMode === 'in'
-                              ? 'bg-studio-accent/25 text-slate-100'
-                              : 'text-studio-muted hover:bg-white/5'
-                          }`}
-                          onClick={() => {
-                            setAuthMode('in');
-                            setFormError('');
-                          }}
-                        >
-                          Sign in
-                        </button>
-                        <button
-                          type="button"
-                          className={`rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors ${
-                            authMode === 'up'
-                              ? 'bg-studio-accent/25 text-slate-100'
-                              : 'text-studio-muted hover:bg-white/5'
-                          }`}
-                          onClick={() => {
-                            setAuthMode('up');
-                            setFormError('');
-                          }}
-                        >
-                          Sign up
-                        </button>
-                      </div>
-                      <label className="block text-[10px] text-studio-muted" htmlFor="set-login">
-                        Username or email
-                      </label>
-                      <input
-                        id="set-login"
-                        autoComplete="username"
-                        value={formLogin}
-                        onChange={(e) => setFormLogin(e.target.value)}
-                        className={inputCls}
-                      />
-                      <label className="block text-[10px] text-studio-muted" htmlFor="set-password">
-                        Password
-                      </label>
-                      <input
-                        id="set-password"
-                        type="password"
-                        autoComplete={authMode === 'up' ? 'new-password' : 'current-password'}
-                        value={formPassword}
-                        onChange={(e) => setFormPassword(e.target.value)}
-                        className={inputCls}
-                      />
-                      {authMode === 'up' ? (
-                        <>
-                          <label className="block text-[10px] text-studio-muted" htmlFor="set-confirm">
-                            Confirm password
-                          </label>
-                          <input
-                            id="set-confirm"
-                            type="password"
-                            autoComplete="new-password"
-                            value={formConfirm}
-                            onChange={(e) => setFormConfirm(e.target.value)}
-                            className={inputCls}
-                          />
-                        </>
-                      ) : null}
-                      {formError ? <p className="text-[11px] text-red-300/90">{formError}</p> : null}
-                      <Button variant="primary" className="!text-xs" disabled={busy} onClick={() => void submitAuth()}>
-                        {busy ? 'Please wait…' : authMode === 'up' ? 'Create account' : 'Sign in'}
-                      </Button>
-                      <p className="text-[10px] leading-relaxed text-studio-muted">
-                        Server must be running. Tokens stay in this browser; passwords are hashed on the server.
-                      </p>
-                    </div>
-                  )}
-                </Panel>
-              </div>
+                    )}
+                  </Panel>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <p className="text-[10px] font-medium uppercase tracking-wide text-slate-500">Local API</p>
+                  <Panel>
+                    <p className="text-[11px] leading-relaxed text-studio-muted">
+                      Not available in demo mode. Use <span className="text-slate-400">Supabase cloud</span> above for
+                      sign-in; device APIs use your Supabase access token only.
+                    </p>
+                  </Panel>
+                </div>
+              )}
             </section>
 
             {/* Save & projects */}
@@ -444,17 +469,29 @@ export default function SettingsModal({ open, onClose }) {
                   {activeSaveLabel}
                 </p>
                 <p className="mt-3 text-[11px] leading-relaxed text-studio-muted">
-                  <span className="font-medium text-slate-400">Priority:</span> Supabase (when configured and you’re
-                  signed in) → then local API (when signed in) → otherwise this browser only.
+                  <span className="font-medium text-slate-400">Priority:</span>{' '}
+                  {demoOnly ? (
+                    <>
+                      Supabase (when signed in) → otherwise this browser only. Local API Save/Open is disabled in demo
+                      mode.
+                    </>
+                  ) : (
+                    <>
+                      Supabase (when configured and you’re signed in) → then local API (when signed in) → otherwise this
+                      browser only.
+                    </>
+                  )}
                 </p>
                 <ul className="mt-2 list-inside list-disc space-y-1 text-[10px] leading-relaxed text-studio-muted">
                   <li>
                     <span className="text-slate-400">Supabase</span> — cloud database; same account on any browser.
                   </li>
-                  <li>
-                    <span className="text-slate-400">Local API</span> — SQLite on your machine; needs{' '}
-                    <span className="font-mono">npm run server</span> / <span className="font-mono">dev:full</span>.
-                  </li>
+                  {!demoOnly ? (
+                    <li>
+                      <span className="text-slate-400">Local API</span> — SQLite on your machine; needs{' '}
+                      <span className="font-mono">npm run server</span> / <span className="font-mono">dev:full</span>.
+                    </li>
+                  ) : null}
                   <li>
                     <span className="text-slate-400">This browser</span> — <span className="font-mono">localStorage</span>
                     ; File → <span className="text-slate-400">Save to this browser only</span> forces it.

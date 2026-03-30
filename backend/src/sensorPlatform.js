@@ -26,14 +26,14 @@ export function setupSensorPlatform(httpServer, app) {
     },
   });
 
-  io.use((socket, next) => {
+  io.use(async (socket, next) => {
     try {
       const raw = socket.handshake.auth?.token;
       const token = typeof raw === 'string' ? raw.trim() : '';
       if (!token) {
         return next(new Error('auth_required'));
       }
-      const out = verifyDashboardBearerToken(token);
+      const out = await verifyDashboardBearerToken(token);
       if (!out) {
         return next(new Error('auth_invalid'));
       }
@@ -53,7 +53,7 @@ export function setupSensorPlatform(httpServer, app) {
 
   console.log('[sensor] SQLite: sensor_devices, sensor_readings in server/data/ide.sqlite');
   console.log(
-    '[sensor] Dashboard JWT: Supabase access token (SUPABASE_JWT_SECRET) then legacy Express JWT — REST + Socket',
+    '[sensor] Dashboard auth: Supabase getUser(access_token) when SUPABASE_URL + SERVICE_ROLE set; else Express JWT — REST + Socket',
   );
   console.log('[sensor] POST /api/readings uses x-device-key (unchanged)');
   console.log(`[sensor] Socket.IO: join user:<sub> on connect; CORS origin: ${clientOrigin}`);

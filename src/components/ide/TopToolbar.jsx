@@ -37,6 +37,7 @@ import { computePersistTarget } from '../../lib/cloudRouting.js';
 import { useCloudAuthStore } from '../../store/cloudAuthStore.js';
 import { useAuthStore } from '../../store/authStore.js';
 import { isSupabaseConfigured } from '../../lib/supabaseClient.js';
+import { isDemoSupabaseOnly } from '../../lib/demoSupabaseOnly.js';
 import { toast } from '../../lib/toast.js';
 import {
   connectWebSerial,
@@ -115,6 +116,8 @@ export default function TopToolbar({ workspace, previewCode = '', onAfterProject
   /** Re-subscribe when Supabase session changes so persistTarget / menus stay in sync after Settings sign-in. */
   const sbUserId = useCloudAuthStore((s) => s.user?.id ?? null);
   const expressSignedIn = useAuthStore((s) => s.isAuthenticated);
+  /** In demo mode, hide Express remote project UI and skip loading API project lists. */
+  const showExpressRemote = expressSignedIn && !isDemoSupabaseOnly();
   const hasRemoteAccount = persistTarget === 'supabase' || persistTarget === 'express_api';
   const connectState = useIdeStore((s) => s.connectState);
   const setConnectState = useIdeStore((s) => s.setConnectState);
@@ -249,7 +252,7 @@ export default function TopToolbar({ workspace, previewCode = '', onAfterProject
     };
 
     const loadExpress = async () => {
-      if (!useAuthStore.getState().isAuthenticated) {
+      if (isDemoSupabaseOnly() || !useAuthStore.getState().isAuthenticated) {
         if (!cancelled) {
           setPickExpressProjects([]);
           setPickExError(null);
@@ -282,7 +285,7 @@ export default function TopToolbar({ workspace, previewCode = '', onAfterProject
     return () => {
       cancelled = true;
     };
-  }, [openPickerOpen, sbUserId, expressSignedIn, appendLog]);
+  }, [openPickerOpen, sbUserId, showExpressRemote, appendLog]);
 
   useEffect(() => {
     if (saveAsOpen) setSaveAsName(projectName);
@@ -1243,9 +1246,13 @@ export default function TopToolbar({ workspace, previewCode = '', onAfterProject
             to="/devices"
             className="inline-flex items-center gap-1.5 rounded-md border border-studio-border/70 bg-[#1a1d22]/95 px-2 py-1 text-[11px] font-medium text-slate-200 shadow-sm hover:border-studio-border hover:bg-[#232830] hover:text-white"
             title={
-              expressSignedIn
-                ? 'Live sensors & device list (same account on other browsers)'
-                : 'Devices — sign in under Settings → Local API first'
+              isDemoSupabaseOnly()
+                ? sbUserId
+                  ? 'Live sensors & device list (Supabase account)'
+                  : 'Devices — sign in under Settings (Supabase) first'
+                : expressSignedIn || sbUserId
+                  ? 'Live sensors & device list (same account on other browsers)'
+                  : 'Devices — sign in under Settings first'
             }
           >
             <LayoutDashboard className="h-3.5 w-3.5 shrink-0 opacity-90" aria-hidden />
@@ -1289,7 +1296,9 @@ export default function TopToolbar({ workspace, previewCode = '', onAfterProject
                 Open project
               </h2>
               <p className="mt-1 text-[11px] leading-relaxed text-studio-muted">
-                Supabase cloud, local API (when signed in), and this browser are separate places.{' '}
+                {isDemoSupabaseOnly()
+                  ? 'Demo mode: Supabase cloud and this browser only.'
+                  : 'Supabase cloud, local API (when signed in), and this browser are separate places.'}{' '}
                 <span className="text-slate-500">
                   Active Save target:{' '}
                   <span className="font-medium text-slate-400">
@@ -1337,32 +1346,34 @@ export default function TopToolbar({ workspace, previewCode = '', onAfterProject
                 </section>
               ) : null}
 
-              <section className="mb-5">
-                <div className="mb-2">
-                  <h3 className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Local API</h3>
-                  <p className="mt-0.5 text-[10px] text-studio-muted">
-                    SQLite projects via <span className="font-mono text-slate-500">npm run server</span> or{' '}
-                    <span className="font-mono text-slate-500">npm run dev:full</span>. Sign in under Settings.
-                  </p>
-                </div>
-                {!expressSignedIn ? (
-                  <div className="rounded-lg border border-dashed border-studio-border/55 bg-[#1e2228]/90 px-3 py-3.5 text-center text-[11px] text-slate-500">
-                    Not signed in to the local API — use Settings → Local API account when the server is running.
+              {!isDemoSupabaseOnly() ? (
+                <section className="mb-5">
+                  <div className="mb-2">
+                    <h3 className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Local API</h3>
+                    <p className="mt-0.5 text-[10px] text-studio-muted">
+                      SQLite projects via <span className="font-mono text-slate-500">npm run server</span> or{' '}
+                      <span className="font-mono text-slate-500">npm run dev:full</span>. Sign in under Settings.
+                    </p>
                   </div>
-                ) : pickExLoading ? (
-                  <p className="py-3 text-center text-[11px] text-studio-muted">Loading API projects…</p>
-                ) : pickExError ? (
-                  <div className="rounded-lg border border-red-900/40 bg-red-950/25 px-3 py-2.5 text-[11px] text-red-200/90">
-                    {pickExError}
-                  </div>
-                ) : pickExpressProjects.length === 0 ? (
-                  <div className="rounded-lg border border-dashed border-studio-border/55 bg-[#1e2228]/90 px-3 py-3.5 text-center text-[11px] text-slate-500">
-                    No API projects yet. Save while signed in to the local API to create one.
-                  </div>
-                ) : (
-                  <ul className="space-y-2">{pickExpressProjects.map((p) => renderRemoteProjectCard(p, 'express_api'))}</ul>
-                )}
-              </section>
+                  {!showExpressRemote ? (
+                    <div className="rounded-lg border border-dashed border-studio-border/55 bg-[#1e2228]/90 px-3 py-3.5 text-center text-[11px] text-slate-500">
+                      Not signed in to the local API — use Settings → Local API account when the server is running.
+                    </div>
+                  ) : pickExLoading ? (
+                    <p className="py-3 text-center text-[11px] text-studio-muted">Loading API projects…</p>
+                  ) : pickExError ? (
+                    <div className="rounded-lg border border-red-900/40 bg-red-950/25 px-3 py-2.5 text-[11px] text-red-200/90">
+                      {pickExError}
+                    </div>
+                  ) : pickExpressProjects.length === 0 ? (
+                    <div className="rounded-lg border border-dashed border-studio-border/55 bg-[#1e2228]/90 px-3 py-3.5 text-center text-[11px] text-slate-500">
+                      No API projects yet. Save while signed in to the local API to create one.
+                    </div>
+                  ) : (
+                    <ul className="space-y-2">{pickExpressProjects.map((p) => renderRemoteProjectCard(p, 'express_api'))}</ul>
+                  )}
+                </section>
+              ) : null}
 
               <section>
                 <div className="mb-2">

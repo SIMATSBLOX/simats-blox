@@ -2,7 +2,7 @@ import { validateReadingPayload } from '../utils/validateReadingPayload.js';
 import { emitSensorUpdate } from '../services/socketService.js';
 import { getSensorRepository } from '../../../server/repositories/getSensorRepository.js';
 
-export function receiveReading(req, res) {
+export async function receiveReading(req, res) {
   try {
     const parsed = validateReadingPayload(req.body);
     if (!parsed.ok) {
@@ -29,7 +29,7 @@ export function receiveReading(req, res) {
       });
     }
 
-    const doc = getSensorRepository().insertSensorReading({
+    const doc = await getSensorRepository().insertSensorReading({
       ownerUserId,
       deviceId,
       sensorType,

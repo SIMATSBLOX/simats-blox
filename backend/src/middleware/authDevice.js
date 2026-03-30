@@ -3,7 +3,7 @@ import { getSensorRepository } from '../../../server/repositories/getSensorRepos
 /**
  * Expects JSON body with deviceId. Header x-device-key must match stored api_key.
  */
-export function authDevice(req, res, next) {
+export async function authDevice(req, res, next) {
   try {
     const key = req.headers['x-device-key'];
     if (typeof key !== 'string' || !key.trim()) {
@@ -14,7 +14,7 @@ export function authDevice(req, res, next) {
       return res.status(400).json({ error: 'deviceId is required in body.' });
     }
 
-    const result = getSensorRepository().authenticateDevice(deviceId.trim(), key.trim());
+    const result = await getSensorRepository().authenticateDevice(deviceId.trim(), key.trim());
     if (!result.ok) {
       if (result.error === 'device_not_found') {
         return res.status(404).json({ error: 'Unknown deviceId.' });

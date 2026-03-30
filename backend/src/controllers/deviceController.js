@@ -4,7 +4,7 @@ import { getSensorRepository } from '../../../server/repositories/getSensorRepos
 
 const TYPE_SET = new Set(SENSOR_TYPES);
 
-export function registerDevice(req, res) {
+export async function registerDevice(req, res) {
   try {
     const userId = req.user?.id;
     if (!userId) {
@@ -28,7 +28,7 @@ export function registerDevice(req, res) {
         ? apiKey.trim()
         : crypto.randomBytes(32).toString('hex');
 
-    const inserted = getSensorRepository().insertSensorDevice({
+    const inserted = await getSensorRepository().insertSensorDevice({
       ownerUserId: userId,
       deviceId: trimmedId,
       name: name.trim(),
@@ -60,13 +60,13 @@ export function registerDevice(req, res) {
   }
 }
 
-export function listDevices(req, res) {
+export async function listDevices(req, res) {
   try {
     const userId = req.user?.id;
     if (!userId) {
       return res.status(401).json({ error: 'Sign in required.' });
     }
-    const devices = getSensorRepository().listSensorDevicesForUser(userId);
+    const devices = await getSensorRepository().listSensorDevicesForUser(userId);
     res.json({ devices });
   } catch (e) {
     console.error('[listDevices]', e);
@@ -74,7 +74,7 @@ export function listDevices(req, res) {
   }
 }
 
-export function getLatestForDevice(req, res) {
+export async function getLatestForDevice(req, res) {
   try {
     const userId = req.user?.id;
     if (!userId) {
@@ -82,11 +82,11 @@ export function getLatestForDevice(req, res) {
     }
     const { deviceId } = req.params;
     const repo = getSensorRepository();
-    const device = repo.getSensorDeviceForUser(userId, deviceId);
+    const device = await repo.getSensorDeviceForUser(userId, deviceId);
     if (!device) {
       return res.status(404).json({ error: 'Device not found.' });
     }
-    const latest = repo.getLatestSensorReading(userId, deviceId);
+    const latest = await repo.getLatestSensorReading(userId, deviceId);
     res.json({
       device,
       latest: latest
@@ -103,7 +103,7 @@ export function getLatestForDevice(req, res) {
   }
 }
 
-export function getHistory(req, res) {
+export async function getHistory(req, res) {
   try {
     const userId = req.user?.id;
     if (!userId) {
@@ -112,11 +112,11 @@ export function getHistory(req, res) {
     const { deviceId } = req.params;
     const limit = Math.min(500, Math.max(1, Number(req.query.limit) || 50));
     const repo = getSensorRepository();
-    const device = repo.getSensorDeviceForUser(userId, deviceId);
+    const device = await repo.getSensorDeviceForUser(userId, deviceId);
     if (!device) {
       return res.status(404).json({ error: 'Device not found.' });
     }
-    const readings = repo.getSensorReadingsHistory(userId, deviceId, limit);
+    const readings = await repo.getSensorReadingsHistory(userId, deviceId, limit);
     res.json({ device, readings, count: readings.length });
   } catch (e) {
     console.error('[getHistory]', e);
@@ -125,7 +125,7 @@ export function getHistory(req, res) {
 }
 
 /** GET /api/readings/history — all devices or one device; newest first. */
-export function listReadingsHistory(req, res) {
+export async function listReadingsHistory(req, res) {
   try {
     const userId = req.user?.id;
     if (!userId) {
@@ -137,12 +137,12 @@ export function listReadingsHistory(req, res) {
     let filterDeviceId;
     if (typeof raw === 'string' && raw.trim()) {
       const trimmed = raw.trim();
-      if (!repo.getSensorDeviceForUser(userId, trimmed)) {
+      if (!(await repo.getSensorDeviceForUser(userId, trimmed))) {
         return res.status(404).json({ error: 'Device not found.' });
       }
       filterDeviceId = trimmed;
     }
-    const readings = repo.listSensorReadingsLog(userId, filterDeviceId, limit);
+    const readings = await repo.listSensorReadingsLog(userId, filterDeviceId, limit);
     res.json({ readings, count: readings.length });
   } catch (e) {
     console.error('[listReadingsHistory]', e);
@@ -150,7 +150,7 @@ export function listReadingsHistory(req, res) {
   }
 }
 
-export function deleteDevice(req, res) {
+export async function deleteDevice(req, res) {
   try {
     const userId = req.user?.id;
     if (!userId) {
@@ -160,7 +160,7 @@ export function deleteDevice(req, res) {
     if (typeof deviceId !== 'string' || !deviceId.trim()) {
       return res.status(400).json({ error: 'deviceId is required.' });
     }
-    const removed = getSensorRepository().deleteSensorDevice(userId, deviceId.trim());
+    const removed = await getSensorRepository().deleteSensorDevice(userId, deviceId.trim());
     if (!removed) {
       return res.status(404).json({ error: 'Device not found.' });
     }
@@ -171,7 +171,7 @@ export function deleteDevice(req, res) {
   }
 }
 
-export function regenerateDeviceKey(req, res) {
+export async function regenerateDeviceKey(req, res) {
   try {
     const userId = req.user?.id;
     if (!userId) {
@@ -181,7 +181,7 @@ export function regenerateDeviceKey(req, res) {
     if (typeof deviceId !== 'string' || !deviceId.trim()) {
       return res.status(400).json({ error: 'deviceId is required.' });
     }
-    const out = getSensorRepository().regenerateSensorDeviceApiKey(userId, deviceId.trim());
+    const out = await getSensorRepository().regenerateSensorDeviceApiKey(userId, deviceId.trim());
     if (!out.ok) {
       return res.status(404).json({ error: 'Device not found.' });
     }

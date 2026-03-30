@@ -1,6 +1,6 @@
 /**
  * SQLite sensor persistence — delegates to `server/sensorStore.js`.
- * Plaintext api_key verification (unchanged); future Supabase repo will use hash + lookup.
+ * Plaintext `api_key` verification. Methods are async for parity with the Supabase repository.
  */
 import crypto from 'node:crypto';
 import * as sensorStore from '../sensorStore.js';
@@ -21,7 +21,7 @@ function timingSafeEqualStrings(a, b) {
  */
 export function createSqliteSensorRepository() {
   return {
-    authenticateDevice(deviceIdTrimmed, apiKeyTrimmed) {
+    async authenticateDevice(deviceIdTrimmed, apiKeyTrimmed) {
       const row = sensorStore.getSensorDeviceRowByDeviceId(deviceIdTrimmed);
       if (!row) {
         return { ok: false, error: 'device_not_found' };
@@ -39,14 +39,32 @@ export function createSqliteSensorRepository() {
       };
     },
 
-    listSensorDevicesForUser: sensorStore.listSensorDevicesForUser,
-    insertSensorDevice: sensorStore.insertSensorDevice,
-    getSensorDeviceForUser: sensorStore.getSensorDeviceForUser,
-    getLatestSensorReading: sensorStore.getLatestSensorReading,
-    getSensorReadingsHistory: sensorStore.getSensorReadingsHistory,
-    listSensorReadingsLog: sensorStore.listSensorReadingsLog,
-    insertSensorReading: sensorStore.insertSensorReading,
-    deleteSensorDevice: sensorStore.deleteSensorDevice,
-    regenerateSensorDeviceApiKey: sensorStore.regenerateSensorDeviceApiKey,
+    async listSensorDevicesForUser(ownerUserId) {
+      return sensorStore.listSensorDevicesForUser(ownerUserId);
+    },
+    async insertSensorDevice(p) {
+      return sensorStore.insertSensorDevice(p);
+    },
+    async getSensorDeviceForUser(ownerUserId, deviceId) {
+      return sensorStore.getSensorDeviceForUser(ownerUserId, deviceId);
+    },
+    async getLatestSensorReading(ownerUserId, deviceId) {
+      return sensorStore.getLatestSensorReading(ownerUserId, deviceId);
+    },
+    async getSensorReadingsHistory(ownerUserId, deviceId, limit) {
+      return sensorStore.getSensorReadingsHistory(ownerUserId, deviceId, limit);
+    },
+    async listSensorReadingsLog(ownerUserId, deviceId, limit) {
+      return sensorStore.listSensorReadingsLog(ownerUserId, deviceId, limit);
+    },
+    async insertSensorReading(p) {
+      return sensorStore.insertSensorReading(p);
+    },
+    async deleteSensorDevice(ownerUserId, deviceId) {
+      return sensorStore.deleteSensorDevice(ownerUserId, deviceId);
+    },
+    async regenerateSensorDeviceApiKey(ownerUserId, deviceIdTrim) {
+      return sensorStore.regenerateSensorDeviceApiKey(ownerUserId, deviceIdTrim);
+    },
   };
 }

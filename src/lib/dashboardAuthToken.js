@@ -1,9 +1,10 @@
 import { readAuthTokenFromStorage } from './authStorage.js';
 import { getSupabaseClient, isSupabaseConfigured } from './supabaseClient.js';
+import { isDemoSupabaseOnly } from './demoSupabaseOnly.js';
 
 /**
  * Token for device/dashboard REST + Socket.IO. Prefers Supabase session when configured (canonical identity),
- * else legacy Express JWT from localStorage.
+ * else legacy Express JWT from localStorage — unless VITE_DEMO_SUPABASE_ONLY=true (Supabase only).
  * @returns {Promise<{ token: string | null; source: 'supabase' | 'express' | null }>}
  */
 export async function getDashboardAccessToken() {
@@ -17,6 +18,9 @@ export async function getDashboardAccessToken() {
         return { token: session.access_token, source: 'supabase' };
       }
     }
+  }
+  if (isDemoSupabaseOnly()) {
+    return { token: null, source: null };
   }
   const express = readAuthTokenFromStorage();
   if (express) return { token: express, source: 'express' };
