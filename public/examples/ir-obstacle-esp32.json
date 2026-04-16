@@ -1,0 +1,73 @@
+{
+  "version": 1,
+  "projectName": "Example: IR obstacle avoidance sensor",
+  "boardId": "esp32",
+  "description": "IR obstacle module on GPIO14 with pull-up. Many boards are active-low; flip logic in your lesson if needed.",
+  "blockly": {
+    "blocks": {
+      "languageVersion": 0,
+      "blocks": [
+        {
+          "type": "esp32_when_starts",
+          "id": "RjADq~HgeKPuO/,Rg{Vs",
+          "x": 20,
+          "y": 20,
+          "next": {
+            "block": {
+              "type": "comm_serial_begin",
+              "id": "i%I@y[`[ORPf,h~8~c3F",
+              "fields": {
+                "BAUD": 115200
+              },
+              "next": {
+                "block": {
+                  "type": "board_pin_mode",
+                  "id": "Qs5cUHh@tE~oy!eb]pSb",
+                  "fields": {
+                    "DPIN": 14,
+                    "MODE": "INPUT_PULLUP"
+                  },
+                  "next": {
+                    "block": {
+                      "type": "hw_forever",
+                      "id": "}e%O9tA5z5zUY1Um}4O+",
+                      "inputs": {
+                        "DO": {
+                          "block": {
+                            "type": "comm_serial_println",
+                            "id": "I@nbeGjT4AgfZ=m5.Jhh",
+                            "inputs": {
+                              "VAL": {
+                                "block": {
+                                  "type": "sensor_digital_mblock",
+                                  "id": "I/ScEuRp,84LV`D!`~3~",
+                                  "fields": {
+                                    "DSTYPE": "IR",
+                                    "DPIN": 14
+                                  }
+                                }
+                              }
+                            },
+                            "next": {
+                              "block": {
+                                "type": "hw_wait",
+                                "id": "hTCz7-@2f#FEha0xtlQx",
+                                "fields": {
+                                  "MS": 300
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

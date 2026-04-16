@@ -3,7 +3,7 @@ import { normalizeCategoryId } from '../blockly/toolbox.js';
 import { filterSerialMonitorOutput } from '../lib/serialDisplayFilter.js';
 
 /** @typedef {{ id: string, text: string }} SerialLine */
-/** @typedef {'arduino_uno' | 'esp32'} BoardId */
+/** @typedef {'esp32'} BoardId */
 
 /** Cap stored serial rows (oldest dropped first). */
 const SERIAL_MAX_LINES = 2000;
@@ -94,7 +94,6 @@ function scheduleSerialFlush(set) {
 }
 
 export const BOARD_LABEL = {
-  arduino_uno: 'Arduino Uno',
   esp32: 'ESP32 · MicroPython',
 };
 
@@ -105,7 +104,7 @@ export const useIdeStore = create((set, get) => ({
   projectName: 'Untitled hardware project',
   /** Optional blurb; included in saved JSON when non-empty. */
   description: '',
-  boardId: /** @type {BoardId} */ ('arduino_uno'),
+  boardId: /** @type {BoardId} */ ('esp32'),
   /** When set, File → Save updates this row in browser localStorage. */
   browserProjectId: /** @type {string | null} */ (null),
   /** When set, Save updates this project on the account (API). */
@@ -134,7 +133,7 @@ export const useIdeStore = create((set, get) => ({
     {
       id: '2',
       level: 'info',
-      text: 'Connect (Chrome / Edge / Opera) opens USB serial. ESP32: Upload writes MicroPython to main.py when connected. Arduino Uno: Export Code (.ino) and flash in Arduino IDE — Upload here only explains that workflow.',
+      text: 'Connect (Chrome / Edge / Opera) opens USB serial. Upload writes MicroPython to main.py on ESP32 when connected.',
     },
     {
       id: '3',
@@ -148,15 +147,8 @@ export const useIdeStore = create((set, get) => ({
 
   setProjectName: (projectName) => set({ projectName }),
   setDescription: (description) => set({ description: typeof description === 'string' ? description : '' }),
-  /** Target board for blocks and code preview only — does not change project title or notes. */
-  setBoardId: (boardId) =>
-    set((s) => {
-      const bid = boardId === 'esp32' ? 'esp32' : 'arduino_uno';
-      const nc = normalizeCategoryId(s.activeCategoryId);
-      const activeCategoryId =
-        bid === 'arduino_uno' && nc === 'esp32' ? 'control' : s.activeCategoryId;
-      return { boardId: bid, activeCategoryId };
-    }),
+  /** Product is ESP32-only; kept for API compatibility (no-op aside from normalizing state). */
+  setBoardId: () => set({ boardId: 'esp32' }),
   setBrowserProjectId: (browserProjectId) =>
     set({ browserProjectId: browserProjectId && typeof browserProjectId === 'string' ? browserProjectId : null }),
   setCloudProjectId: (cloudProjectId) =>
@@ -230,15 +222,12 @@ export const useIdeStore = create((set, get) => ({
 
   /**
    * Replace project metadata from an imported payload (JSON project, example, browser/cloud row).
-   * Board change does not use this — see setBoardId.
+   * Board is always normalized to ESP32 for this product.
    * @param {object} payload
    */
   applyImportPayload: (payload) =>
     set((s) => {
-      const bid = payload.boardId === 'esp32' ? 'esp32' : 'arduino_uno';
-      const nc = normalizeCategoryId(s.activeCategoryId);
-      const activeCategoryId =
-        bid === 'arduino_uno' && nc === 'esp32' ? 'control' : s.activeCategoryId;
+      const activeCategoryId = s.activeCategoryId;
 
       const rawName = payload?.projectName;
       const projectName = (() => {
@@ -253,7 +242,7 @@ export const useIdeStore = create((set, get) => ({
       return {
         projectName,
         description,
-        boardId: bid,
+        boardId: 'esp32',
         activeCategoryId,
       };
     }),

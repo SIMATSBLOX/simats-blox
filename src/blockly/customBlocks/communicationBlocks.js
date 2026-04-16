@@ -1,3 +1,5 @@
+import { shadowMathNumber, shadowText } from './valueInputShadows.js';
+
 /** @type {import('blockly/core/utils/json').BlockDefinitionJson[]} */
 export const communicationBlockDefinitions = [
   {
@@ -17,12 +19,12 @@ export const communicationBlockDefinitions = [
     previousStatement: null,
     nextStatement: null,
     style: 'comm_brown_blocks',
-    tooltip: 'Call once in setup (attach under “when board starts”). Match baud to the Serial Monitor.',
+    tooltip: 'Call once in setup (under “when ESP32 starts” or “when board starts”). Match baud to the Serial Monitor.',
   },
   {
     type: 'comm_serial_print',
     message0: 'Serial.print %1 (no new line)',
-    args0: [{ type: 'input_value', name: 'VAL' }],
+    args0: [{ type: 'input_value', name: 'VAL', shadow: shadowMathNumber(0) }],
     inputsInline: true,
     previousStatement: null,
     nextStatement: null,
@@ -32,7 +34,7 @@ export const communicationBlockDefinitions = [
   {
     type: 'comm_serial_println',
     message0: 'Serial.println %1 (new line)',
-    args0: [{ type: 'input_value', name: 'VAL' }],
+    args0: [{ type: 'input_value', name: 'VAL', shadow: shadowMathNumber(0) }],
     inputsInline: true,
     previousStatement: null,
     nextStatement: null,
@@ -53,12 +55,12 @@ export const communicationBlockDefinitions = [
     previousStatement: null,
     nextStatement: null,
     style: 'comm_brown_blocks',
-    tooltip: 'ESP32: BluetoothSerial device name. Uno: no native BT — see generated comments.',
+    tooltip: 'BluetoothSerial device name on ESP32 (classic Bluetooth).',
   },
   {
     type: 'comm_bt_send',
     message0: 'Bluetooth.println %1',
-    args0: [{ type: 'input_value', name: 'VAL', check: 'String' }],
+    args0: [{ type: 'input_value', name: 'VAL', check: 'String', shadow: shadowText('Hello') }],
     inputsInline: true,
     previousStatement: null,
     nextStatement: null,
@@ -69,13 +71,13 @@ export const communicationBlockDefinitions = [
     message0: 'Bluetooth has data to read?',
     output: 'Boolean',
     style: 'comm_brown_blocks',
-    tooltip: 'True when data can be read from the Bluetooth UART (ESP32) or module (Uno placeholder).',
+    tooltip: 'True when data can be read from the Bluetooth UART (ESP32).',
   },
   {
     type: 'comm_bt_read',
     message0: 'read line from Bluetooth',
     output: 'String',
     style: 'comm_brown_blocks',
-    tooltip: 'Reads a line/string from Bluetooth (ESP32). Uno: requires external module wiring.',
+    tooltip: 'Reads a line/string from Bluetooth (ESP32).',
   },
 ];

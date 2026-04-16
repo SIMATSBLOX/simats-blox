@@ -1,3 +1,5 @@
+import { shadowMathNumber } from './valueInputShadows.js';
+
 /** @type {import('blockly/core/utils/json').BlockDefinitionJson[]} */
 export const variableExtrasDefinitions = [
   {
@@ -9,7 +11,7 @@ export const variableExtrasDefinitions = [
         name: 'VAR',
         variable: '%{BKY_VARIABLES_DEFAULT_NAME}',
       },
-      { type: 'input_value', name: 'DELTA', check: 'Number' },
+      { type: 'input_value', name: 'DELTA', check: 'Number', shadow: shadowMathNumber(1) },
     ],
     inputsInline: true,
     previousStatement: null,

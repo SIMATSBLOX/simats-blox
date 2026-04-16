@@ -28,7 +28,7 @@ export const sensorBlockDefinitions = [
     inputsInline: true,
     output: 'Number',
     style: 'sensor_cyan_blocks',
-    tooltip: 'Install DHT library in Arduino IDE; preview calls generated helper when possible.',
+    tooltip: 'DHT on ESP32 — MicroPython preview uses the native dht module; allow time between reads.',
   },
   {
     type: 'sensor_dht_humidity',

@@ -1,42 +1,42 @@
 {
   "version": 1,
-  "projectName": "Example: DHT22 temperature & humidity",
+  "projectName": "Example: DHT11 temperature & humidity",
   "boardId": "esp32",
-  "description": "DHT22 on GPIO15. Preview uses the machine/dht-style helpers. Allow 2 s between reads. Change the pin in blocks if your wiring differs.",
+  "description": "DHT11 on GPIO15. Preview uses machine/dht-style helpers; allow 2 s between reads. Change the pin if your wiring differs.",
   "blockly": {
     "blocks": {
       "languageVersion": 0,
       "blocks": [
         {
           "type": "esp32_when_starts",
-          "id": "N^~;:+J*G$]$~Dk+(_m-",
+          "id": "Cy[ZCVqQd_)28Z3R@=f%",
           "x": 20,
           "y": 20,
           "next": {
             "block": {
               "type": "comm_serial_begin",
-              "id": "8^,z)r`s71mv$,be^!4w",
+              "id": "sL`n1ao11#QAdzUl,vmk",
               "fields": {
                 "BAUD": 115200
               },
               "next": {
                 "block": {
                   "type": "hw_forever",
-                  "id": "`=jJjDHosK~89LRcQpF0",
+                  "id": ")J;./Vtox=}lxx[Wi7rT",
                   "inputs": {
                     "DO": {
                       "block": {
                         "type": "comm_serial_println",
-                        "id": "hKP2e5W.+K5M:imOzA;w",
+                        "id": ":`Z^@f8dhtgiVH0B|?S{",
                         "inputs": {
                           "VAL": {
                             "block": {
                               "type": "sensor_dht_mblock",
-                              "id": "k/}w9X~ywHma=dKGB8)L",
+                              "id": "Wm6wH_F=Wm}h+:AxwLmw",
                               "fields": {
                                 "DHTFIELD": "TEMP",
                                 "DPIN": 15,
-                                "TYPE": "DHT22"
+                                "TYPE": "DHT11"
                               }
                             }
                           }
@@ -44,16 +44,16 @@
                         "next": {
                           "block": {
                             "type": "comm_serial_println",
-                            "id": "%;VUYT%iv_!XxU`=82O:",
+                            "id": "ip5e9/Ax^k:7$$yLVEFN",
                             "inputs": {
                               "VAL": {
                                 "block": {
                                   "type": "sensor_dht_mblock",
-                                  "id": "ICu1)eUvTS0]q:Xg{-lI",
+                                  "id": "J[Z)TAG}%244#u5xs#[,",
                                   "fields": {
                                     "DHTFIELD": "HUM",
                                     "DPIN": 15,
-                                    "TYPE": "DHT22"
+                                    "TYPE": "DHT11"
                                   }
                                 }
                               }
@@ -61,7 +61,7 @@
                             "next": {
                               "block": {
                                 "type": "hw_wait",
-                                "id": "nYDpGnvBTz2wJdTR!*RZ",
+                                "id": "hqBK/l7|BLq^a?+5|6r;",
                                 "fields": {
                                   "MS": 2000
                                 }

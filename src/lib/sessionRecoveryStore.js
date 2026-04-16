@@ -5,6 +5,27 @@
 
 export const SESSION_DRAFT_STORAGE_KEY = 'hardware-block-ide:session-draft:v1';
 
+/**
+ * SPA navigation away from the IDE (e.g. / → /devices) unmounts IDEStudio but keeps this module
+ * loaded. We suppress the recovery *modal* on the next IDE mount and silently re-apply the draft
+ * instead. A real full reload re-executes the bundle and resets this flag — refresh/tab crash recovery
+ * still gets the modal when appropriate.
+ */
+let suppressIdeRecoveryModalOnce = false;
+
+export function markIdeSessionRecoverySpaLeave() {
+  suppressIdeRecoveryModalOnce = true;
+}
+
+/**
+ * @returns {boolean} true if this IDE mount should skip the recovery modal (internal return trip)
+ */
+export function consumeIdeRecoveryModalSuppression() {
+  if (!suppressIdeRecoveryModalOnce) return false;
+  suppressIdeRecoveryModalOnce = false;
+  return true;
+}
+
 const DEFAULT_PROJECT_NAME = 'Untitled hardware project';
 
 /**
@@ -37,11 +58,10 @@ export function countTopLevelBlocklyBlocks(blockly) {
 export function isSessionDraftMeaningful(data) {
   const name = String(data.projectName ?? '').trim();
   const desc = String(data.description ?? '').trim();
-  const board = data.boardId === 'esp32' ? 'esp32' : 'arduino_uno';
+  const legacyBoard = data.boardId != null && data.boardId !== '' && data.boardId !== 'esp32';
   const n = countTopLevelBlocklyBlocks(data.blockly);
   const hasBlocks = n > 0;
-  const hasCustomMeta =
-    name !== DEFAULT_PROJECT_NAME || desc.length > 0 || board !== 'arduino_uno';
+  const hasCustomMeta = name !== DEFAULT_PROJECT_NAME || desc.length > 0 || legacyBoard;
   return hasBlocks || hasCustomMeta;
 }
 

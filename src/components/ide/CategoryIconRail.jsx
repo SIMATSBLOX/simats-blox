@@ -41,7 +41,7 @@ export default function CategoryIconRail({ layout = 'vertical' }) {
       className={
         isH
           ? 'flex shrink-0 flex-row items-stretch gap-0.5 overflow-x-auto border-b border-studio-border bg-[#14171b] px-1 py-0.5'
-          : 'flex w-[52px] shrink-0 flex-col gap-0.5 overflow-y-auto overflow-x-hidden border-r border-studio-border bg-[#14171b] py-1'
+          : 'flex w-[68px] shrink-0 flex-col gap-0.5 overflow-y-auto overflow-x-hidden border-r border-studio-border bg-[#14171b] px-0.5 py-1'
       }
       aria-label={`Block categories — ${BOARD_LABEL[boardId] ?? boardId}`}
     >
@@ -61,7 +61,7 @@ export default function CategoryIconRail({ layout = 'vertical' }) {
                       ? 'bg-studio-accent/30 text-white ring-1 ring-studio-accent/45'
                       : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
                   }`
-                : `flex w-full flex-col items-center justify-center rounded px-0.5 py-1.5 transition-colors ${
+                : `flex w-full flex-col items-center justify-center rounded px-1 py-1.5 transition-colors ${
                     on
                       ? 'bg-studio-accent/30 text-white ring-1 ring-inset ring-studio-accent/45'
                       : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
@@ -73,7 +73,7 @@ export default function CategoryIconRail({ layout = 'vertical' }) {
               className={
                 isH
                   ? 'mt-0.5 max-w-[3.25rem] truncate text-center text-[8px] font-medium leading-tight text-slate-400'
-                  : 'mt-0.5 w-full truncate px-px text-center text-[7px] font-medium leading-[1.05] text-slate-500'
+                  : 'mt-0.5 w-full truncate px-px text-center text-[8px] font-medium leading-snug text-slate-500'
               }
             >
               {cat.label}

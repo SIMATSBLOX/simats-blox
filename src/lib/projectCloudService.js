@@ -100,7 +100,7 @@ export async function saveProjectToCloud(project) {
   const payload = {
     [SB_PROJECT_COLUMNS.NAME]: String(project.projectName ?? 'Untitled project').slice(0, 200),
     [SB_PROJECT_COLUMNS.DESCRIPTION]: typeof project.description === 'string' ? project.description.slice(0, 2000) : '',
-    [SB_PROJECT_COLUMNS.BOARD_ID]: project.boardId === 'esp32' ? 'esp32' : 'arduino_uno',
+    [SB_PROJECT_COLUMNS.BOARD_ID]: 'esp32',
     [SB_PROJECT_COLUMNS.WORKSPACE_JSON]: project.blockly,
     [SB_PROJECT_COLUMNS.UPDATED_AT]: now,
   };

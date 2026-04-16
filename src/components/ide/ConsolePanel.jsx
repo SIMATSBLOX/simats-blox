@@ -4,7 +4,7 @@ import { Trash2 } from 'lucide-react';
 import Panel from '../ui/Panel.jsx';
 import Tabs from '../ui/Tabs.jsx';
 import Button from '../ui/Button.jsx';
-import { BOARD_LABEL, SERIAL_BAUD_PRESETS, useIdeStore } from '../../store/ideStore.js';
+import { SERIAL_BAUD_PRESETS, useIdeStore } from '../../store/ideStore.js';
 import { formatWebSerialError, getWebSerialAvailability, writeSerialText } from '../../lib/webSerialService.js';
 import { rerunMicroPythonMainPy, sendMicroPythonInterrupt } from '../../lib/micropythonSerialUpload.js';
 import { SERIAL_MSG } from '../../lib/serialUserMessages.js';
@@ -16,6 +16,7 @@ import { useDashboardSession } from '../../hooks/useDashboardSession.js';
 import { fetchDeviceList, postDeviceReading } from '../../api/readingApi.js';
 import { getStoredDeviceApiKey } from '../../lib/deviceKeyStorage.js';
 import { parseSerialLineToReading } from '../../lib/serialReadingBridge.js';
+import { formatSensorDeviceDetailTitle, formatSensorSelectOptionLabel } from '../../lib/sensorAddPresets.js';
 
 const LS_FWD = 'simats_serial_forward_enabled';
 const LS_DEV = 'simats_serial_forward_device_id';
@@ -35,7 +36,6 @@ export default function ConsolePanel() {
   const clearSerial = useIdeStore((s) => s.clearSerial);
   const connectState = useIdeStore((s) => s.connectState);
   const serialTabFocusKey = useIdeStore((s) => s.serialTabFocusKey);
-  const boardId = useIdeStore((s) => s.boardId);
   const serialBaudRate = useIdeStore((s) => s.serialBaudRate);
   const setSerialBaudRate = useIdeStore((s) => s.setSerialBaudRate);
   const appendLog = useIdeStore((s) => s.appendLog);
@@ -195,8 +195,7 @@ export default function ConsolePanel() {
 
   const serialAvailability = getWebSerialAvailability();
   const canSend = serialAvailability.ok && connectState === 'connected' && !serialPipelineBusy;
-  const canMpSession =
-    boardId === 'esp32' && serialAvailability.ok && connectState === 'connected' && !serialPipelineBusy;
+  const canMpSession = serialAvailability.ok && connectState === 'connected' && !serialPipelineBusy;
 
   const handleBaudChange = (e) => {
     const v = Number(e.target.value);
@@ -204,9 +203,7 @@ export default function ConsolePanel() {
     const msg =
       connectState === 'connected'
         ? `${SERIAL_MSG.reconnectAfterBaud} (now ${v} baud selected).`
-        : boardId === 'esp32'
-          ? `Baud ${v} for next Connect — ESP32 MicroPython USB is often 115200.`
-          : `Baud ${v} for next Connect — Arduino Uno Serial Monitor usually matches Serial.begin (often 9600).`;
+        : `Baud ${v} for next Connect — ESP32 MicroPython USB is often 115200.`;
     toast('info', msg);
   };
 
@@ -253,10 +250,6 @@ export default function ConsolePanel() {
       toast('info', SERIAL_MSG.busyPipeline);
       return;
     }
-    if (boardId !== 'esp32') {
-      toast('info', SERIAL_MSG.esp32Only);
-      return;
-    }
     if (!serialAvailability.ok) {
       toast('error', serialAvailability.message);
       return;
@@ -282,10 +275,6 @@ export default function ConsolePanel() {
   const handleMpRerun = async () => {
     if (useIdeStore.getState().serialPipelineBusy) {
       toast('info', SERIAL_MSG.busyPipeline);
-      return;
-    }
-    if (boardId !== 'esp32') {
-      toast('info', SERIAL_MSG.esp32Only);
       return;
     }
     if (!serialAvailability.ok) {
@@ -358,9 +347,17 @@ export default function ConsolePanel() {
               </Button>
             }
           >
-            <div className="flex h-full min-h-0 flex-col gap-2 p-1">
-              <div className="shrink-0 space-y-1.5 border-b border-studio-border/50 pb-2">
-                <div className="text-[10px] leading-relaxed text-studio-muted">
+            <div className="flex h-full min-h-0 flex-col gap-2 p-1 sm:flex-row sm:gap-2 sm:pl-1 sm:pr-0.5">
+              <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-1">
+                <p className="shrink-0 text-[10px] leading-snug text-slate-600">
+                  <span className="text-slate-500">USB path:</span> Board (toolbar) → Connect → Upload on ESP32 → output here.
+                  Optional: use the side panel to send matching lines to{' '}
+                  <Link to="/devices" className="text-studio-accent/90 hover:underline">
+                    Devices
+                  </Link>
+                  .
+                </p>
+                <div className="shrink-0 text-[10px] leading-snug text-studio-muted">
                   {!serialAvailability.ok ? (
                     <span className="text-amber-200/85">{serialAvailability.message}</span>
                   ) : connectState === 'connected' ? (
@@ -369,102 +366,42 @@ export default function ConsolePanel() {
                       <span className="text-slate-500"> · </span>
                       <span className="font-mono text-slate-400">{serialBaudRate}</span>
                       <span> baud</span>
-                      {boardId === 'esp32' ? (
-                        <>
-                          <span className="text-slate-500"> · </span>
-                          <span>{SERIAL_MSG.connectedNoDataEsp32Hint}</span>
-                        </>
-                      ) : (
-                        <>
-                          <span className="text-slate-500"> · </span>
-                          <span>must match Serial.begin(...) in your exported .ino (Uno: often 9600).</span>
-                        </>
-                      )}
+                      <>
+                        <span className="text-slate-500"> · </span>
+                        <span>{SERIAL_MSG.connectedNoDataEsp32Hint}</span>
+                      </>
                     </span>
                   ) : connectState === 'connecting' ? (
                     <span className="text-slate-400">Connecting… choose a port if the browser prompts you.</span>
                   ) : (
-                    <span>{consoleSerialDisconnectedCopy(boardId, serialBaudRate)}</span>
+                    <span>{consoleSerialDisconnectedCopy(serialBaudRate)}</span>
                   )}
                 </div>
 
-                <div className="space-y-2 rounded border border-emerald-900/25 bg-[#12151a]/90 px-2 py-2">
-                  <div className="text-[10px] font-medium uppercase tracking-wide text-emerald-200/70">Devices</div>
-                  <label className="flex cursor-pointer items-start gap-2 text-[11px] text-slate-300 select-none">
-                    <input
-                      type="checkbox"
-                      checked={forwardEnabled}
-                      onChange={(e) => persistForwardEnabled(e.target.checked)}
-                      className="mt-0.5 rounded border-studio-border bg-[#181b20] text-studio-accent focus:ring-studio-accent/40"
-                    />
-                    <span>
-                      <span className="font-medium text-slate-200">Send lines to Devices</span>
-                      <span className="text-slate-500"> — save your device key on the </span>
-                      <Link to="/devices" className="text-studio-accent hover:text-studio-accentHover">
-                        Devices
-                      </Link>
-                      <span className="text-slate-500"> page (Step 2), then connect serial here.</span>
-                    </span>
-                  </label>
-                  {forwardEnabled ? (
-                    <>
-                      {!isAuthenticated ? (
-                        <p className="text-[10px] leading-snug text-amber-200/85">
-                          Sign in: Settings → Local API.
-                        </p>
-                      ) : bridgeDevices.length === 0 ? (
-                        <p className="text-[10px] leading-snug text-amber-200/85">
-                          Save a device key on{' '}
-                          <Link to="/devices" className="text-studio-accent hover:text-studio-accentHover">
-                            Devices
-                          </Link>{' '}
-                          page — Step 2.
-                        </p>
-                      ) : (
-                        <label className="block text-[10px] text-studio-muted">
-                          Device
-                          <select
-                            value={forwardTargetId}
-                            onChange={(e) => persistForwardTarget(e.target.value)}
-                            className="mt-0.5 w-full rounded border border-studio-border bg-[#181b20] px-2 py-1 font-mono text-[11px] text-slate-200 focus:border-studio-accent/50 focus:outline-none focus:ring-1 focus:ring-studio-accent/25"
-                          >
-                            {bridgeDevices.map((d) => (
-                              <option key={d.deviceId} value={d.deviceId}>
-                                {d.name} · {d.sensorType} ({d.deviceId})
-                              </option>
-                            ))}
-                          </select>
-                        </label>
-                      )}
-                      <p className="text-[10px] text-slate-500">DHT11: one line like “Humidity: …% Temperature: …°C”. ~1 post/sec.</p>
-                    </>
-                  ) : null}
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2">
-                  <label htmlFor="serial-baud" className="text-[10px] text-slate-500">
-                    Baud
-                  </label>
-                  <select
-                    id="serial-baud"
-                    value={serialBaudRate}
-                    onChange={handleBaudChange}
-                    className="rounded border border-studio-border bg-[#181b20] px-2 py-1 font-mono text-[11px] text-slate-200 focus:border-studio-accent/50 focus:outline-none focus:ring-1 focus:ring-studio-accent/25"
-                    aria-label="Serial baud rate for next connection"
-                  >
-                    {SERIAL_BAUD_PRESETS.map((b) => (
-                      <option key={b} value={b}>
-                        {b}
-                      </option>
-                    ))}
-                  </select>
-                  {connectState === 'connected' ? (
-                    <span className="text-[10px] text-amber-200/80">{SERIAL_MSG.reconnectAfterBaud}</span>
-                  ) : null}
-                </div>
-                {boardId === 'esp32' ? (
-                  <div className="flex flex-wrap items-center gap-1.5 border-t border-studio-border/40 pt-2">
-                    <span className="text-[10px] font-medium uppercase tracking-wide text-slate-500">MicroPython</span>
+                <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 border-b border-studio-border/40 pb-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <label htmlFor="serial-baud" className="text-[10px] text-slate-500">
+                      Baud
+                    </label>
+                    <select
+                      id="serial-baud"
+                      value={serialBaudRate}
+                      onChange={handleBaudChange}
+                      className="rounded border border-studio-border bg-[#181b20] px-2 py-0.5 font-mono text-[11px] text-slate-200 focus:border-studio-accent/50 focus:outline-none focus:ring-1 focus:ring-studio-accent/25"
+                      aria-label="Serial baud rate for next connection"
+                    >
+                      {SERIAL_BAUD_PRESETS.map((b) => (
+                        <option key={b} value={b}>
+                          {b}
+                        </option>
+                      ))}
+                    </select>
+                    {connectState === 'connected' ? (
+                      <span className="text-[10px] text-amber-200/80">{SERIAL_MSG.reconnectAfterBaud}</span>
+                    ) : null}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-1">
+                    <span className="text-[10px] text-slate-500">MP</span>
                     <Button
                       type="button"
                       variant="default"
@@ -504,103 +441,167 @@ export default function ConsolePanel() {
                       Run again
                     </Button>
                     {connectState !== 'connected' || !serialAvailability.ok ? (
-                      <span className="text-[10px] text-studio-muted">Connect for Stop / Run again (ESP32 only).</span>
+                      <span className="w-full text-[10px] text-studio-muted sm:w-auto">
+                        Connect USB for Stop / Run again.
+                      </span>
                     ) : null}
                   </div>
-                ) : null}
-              </div>
-
-              {serialHistoryTrimmed ? (
-                <p className="shrink-0 text-[10px] leading-snug text-studio-muted">
-                  Older serial output was removed to keep this tab responsive (line / size limits).
-                </p>
-              ) : null}
-
-              <div
-                ref={serialScrollRef}
-                onScroll={onSerialScroll}
-                className="min-h-0 flex-1 overflow-auto rounded border border-studio-border/40 bg-[#14171b]/90 p-2 font-mono text-[11px] leading-snug text-amber-100/95"
-              >
-                {serialLines.length === 0 ? (
-                  <span className="text-studio-muted">
-                    {connectState === 'connected'
-                      ? boardId === 'esp32'
-                        ? SERIAL_MSG.connectedNoData
-                        : 'Connected — no bytes yet. Upload a sketch from Arduino IDE that uses Serial.print, or use Send below.'
-                      : serialAvailability.ok
-                        ? 'Not connected — use toolbar Connect, then open this tab to watch output.'
-                        : SERIAL_MSG.browserUnsupported}
-                  </span>
-                ) : (
-                  serialLines.map((l) => (
-                    <div key={l.id} className="whitespace-pre-wrap break-all">
-                      {l.text}
-                    </div>
-                  ))
-                )}
-              </div>
-
-              <form
-                className="shrink-0 space-y-1 border-t border-studio-border/50 pt-2"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  void handleSend();
-                }}
-              >
-                <div className="flex gap-1.5">
-                  <input
-                    type="text"
-                    value={sendDraft}
-                    onChange={(e) => setSendDraft(e.target.value)}
-                    placeholder={
-                      canSend
-                        ? 'Text to send…'
-                        : connectState !== 'connected'
-                          ? 'Connect to send…'
-                          : SERIAL_MSG.busyPipeline
-                    }
-                    disabled={!canSend}
-                    className={`${inputCls} min-w-0 flex-1`}
-                    aria-label="Serial send buffer"
-                    autoComplete="off"
-                    spellCheck={false}
-                  />
-                  <Button
-                    type="submit"
-                    variant="default"
-                    className="!shrink-0 !px-2.5 !py-1 !text-[11px]"
-                    disabled={!canSend}
-                    title={
-                      canSend
-                        ? 'Send to device'
-                        : connectState !== 'connected'
-                          ? SERIAL_MSG.notConnected
-                          : SERIAL_MSG.busyPipeline
-                    }
-                  >
-                    Send
-                  </Button>
                 </div>
-                <label className="flex cursor-pointer items-center gap-2 text-[10px] text-studio-muted select-none">
-                  <input
-                    type="checkbox"
-                    checked={appendNewline}
-                    onChange={(e) => setAppendNewline(e.target.checked)}
-                    className="rounded border-studio-border bg-[#181b20] text-studio-accent focus:ring-studio-accent/40"
-                  />
-                  Append newline (\n) after each send
-                </label>
-                {sendHint ? (
-                  <p
-                    className={
-                      sendHint.kind === 'ok' ? 'text-[10px] text-emerald-400/90' : 'text-[10px] text-red-300/90'
-                    }
-                    role="status"
-                  >
-                    {sendHint.msg}
+
+                {serialHistoryTrimmed ? (
+                  <p className="shrink-0 text-[10px] leading-snug text-studio-muted">
+                    Older serial output was removed to keep this tab responsive (line / size limits).
                   </p>
                 ) : null}
-              </form>
+
+                <div
+                  ref={serialScrollRef}
+                  onScroll={onSerialScroll}
+                  className="min-h-0 flex-1 overflow-auto rounded border border-studio-border/40 bg-[#14171b]/90 p-2 font-mono text-[11px] leading-snug text-amber-100/95"
+                >
+                  {serialLines.length === 0 ? (
+                    <span className="text-studio-muted">
+                      {connectState === 'connected'
+                        ? SERIAL_MSG.connectedNoData
+                        : serialAvailability.ok
+                          ? 'Not connected — use toolbar Connect, then open this tab to watch output.'
+                          : SERIAL_MSG.browserUnsupported}
+                    </span>
+                  ) : (
+                    serialLines.map((l) => (
+                      <div key={l.id} className="whitespace-pre-wrap break-all">
+                        {l.text}
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                <form
+                  className="shrink-0 space-y-1 border-t border-studio-border/50 pt-1.5"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    void handleSend();
+                  }}
+                >
+                  <div className="flex gap-1.5">
+                    <input
+                      type="text"
+                      value={sendDraft}
+                      onChange={(e) => setSendDraft(e.target.value)}
+                      placeholder={
+                        canSend
+                          ? 'Text to send…'
+                          : connectState !== 'connected'
+                            ? 'Connect to send…'
+                            : SERIAL_MSG.busyPipeline
+                      }
+                      disabled={!canSend}
+                      className={`${inputCls} min-w-0 flex-1`}
+                      aria-label="Serial send buffer"
+                      autoComplete="off"
+                      spellCheck={false}
+                    />
+                    <Button
+                      type="submit"
+                      variant="default"
+                      className="!shrink-0 !px-2.5 !py-1 !text-[11px]"
+                      disabled={!canSend}
+                      title={
+                        canSend
+                          ? 'Send to device'
+                          : connectState !== 'connected'
+                            ? SERIAL_MSG.notConnected
+                            : SERIAL_MSG.busyPipeline
+                      }
+                    >
+                      Send
+                    </Button>
+                  </div>
+                  <label className="flex cursor-pointer items-center gap-2 text-[10px] text-studio-muted select-none">
+                    <input
+                      type="checkbox"
+                      checked={appendNewline}
+                      onChange={(e) => setAppendNewline(e.target.checked)}
+                      className="rounded border-studio-border bg-[#181b20] text-studio-accent focus:ring-studio-accent/40"
+                    />
+                    Append newline (\n) after each send
+                  </label>
+                  {sendHint ? (
+                    <p
+                      className={
+                        sendHint.kind === 'ok' ? 'text-[10px] text-emerald-400/90' : 'text-[10px] text-red-300/90'
+                      }
+                      role="status"
+                    >
+                      {sendHint.msg}
+                    </p>
+                  ) : null}
+                </form>
+              </div>
+
+              <aside className="flex max-h-[40vh] w-full shrink-0 flex-col gap-1.5 border-t border-studio-border/45 pt-2 sm:max-h-none sm:w-[13.5rem] sm:border-l sm:border-t-0 sm:pt-0 sm:pl-2 md:w-[15rem]">
+                <p className="text-[9px] font-medium uppercase tracking-wide text-slate-600">Optional · cloud</p>
+                <div className="space-y-1.5 rounded border border-studio-border/30 bg-[#14171b]/50 px-2 py-1.5">
+                  <label className="flex cursor-pointer items-start gap-2 text-[10px] text-slate-400 select-none">
+                    <input
+                      type="checkbox"
+                      checked={forwardEnabled}
+                      onChange={(e) => persistForwardEnabled(e.target.checked)}
+                      className="mt-0.5 rounded border-studio-border bg-[#181b20] text-studio-accent focus:ring-studio-accent/40"
+                    />
+                    <span>
+                      <span className="font-medium text-slate-300">Forward serial lines to Devices</span>
+                      <span className="block text-slate-500">
+                        Save device key on{' '}
+                        <Link to="/devices?tab=setup" className="text-studio-accent hover:text-studio-accentHover">
+                          Setup
+                        </Link>
+                        ; USB still uses toolbar Connect.
+                      </span>
+                    </span>
+                  </label>
+                  {forwardEnabled ? (
+                    <>
+                      {!isAuthenticated ? (
+                        <p className="text-[10px] leading-snug text-amber-200/85">
+                          Sign in under Settings to post readings.
+                        </p>
+                      ) : bridgeDevices.length === 0 ? (
+                        <p className="text-[10px] leading-snug text-amber-200/85">
+                          Save a device key on{' '}
+                          <Link to="/devices?tab=setup" className="text-studio-accent hover:text-studio-accentHover">
+                            Setup
+                          </Link>
+                          .
+                        </p>
+                      ) : (
+                        <label className="block text-[10px] text-slate-500">
+                          Sensor
+                          <select
+                            value={forwardTargetId}
+                            onChange={(e) => persistForwardTarget(e.target.value)}
+                            className="mt-0.5 w-full rounded border border-studio-border/60 bg-[#181b20] px-1.5 py-0.5 font-mono text-[10px] text-slate-200 focus:border-studio-accent/50 focus:outline-none focus:ring-1 focus:ring-studio-accent/25"
+                          >
+                            {bridgeDevices.map((d) => (
+                              <option key={d.deviceId} value={d.deviceId} title={formatSensorDeviceDetailTitle(d)}>
+                                {formatSensorSelectOptionLabel(d)}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                      )}
+                      <details className="text-[10px] text-slate-500">
+                        <summary className="cursor-pointer select-none text-slate-500 hover:text-slate-400">
+                          Line format help
+                        </summary>
+                        <p className="mt-1 border-l border-studio-border/50 pl-2 leading-snug text-slate-500">
+                          DHT11: one line like &quot;Humidity: …% Temperature: …°C&quot;. About one post per second.
+                        </p>
+                      </details>
+                    </>
+                  ) : null}
+                </div>
+              </aside>
             </div>
           </Panel>
         )}

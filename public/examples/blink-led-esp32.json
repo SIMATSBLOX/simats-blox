@@ -9,13 +9,13 @@
       "blocks": [
         {
           "type": "esp32_when_starts",
-          "id": "$0}dJ!Hp{f0aS%%hbIM:",
+          "id": "q7$9Bp/[$xxtTUXz`S#l",
           "x": 20,
           "y": 20,
           "next": {
             "block": {
               "type": "board_pin_mode",
-              "id": "!dg)Psa;J(J=0Mu-g#a}",
+              "id": "n,o]ypgBqhxsa5CB#K|w",
               "fields": {
                 "DPIN": 2,
                 "MODE": "OUTPUT"
@@ -23,12 +23,12 @@
               "next": {
                 "block": {
                   "type": "hw_forever",
-                  "id": "6e^|#Wf2%jc4j2Q%cl*~",
+                  "id": "yv;x(euc^}3xzg;}9ixQ",
                   "inputs": {
                     "DO": {
                       "block": {
                         "type": "board_digital_write",
-                        "id": "7ThkK;t.;**JW(OsdSb8",
+                        "id": "|pL/R{|McvyJdtO|JvFn",
                         "fields": {
                           "DPIN": 2,
                           "LEVEL": "HIGH"
@@ -36,14 +36,14 @@
                         "next": {
                           "block": {
                             "type": "hw_wait",
-                            "id": "`w]-ovFlt||n~H~3y=Z9",
+                            "id": "u]#4SmUl-mx5?/|(3}D0",
                             "fields": {
                               "MS": 500
                             },
                             "next": {
                               "block": {
                                 "type": "board_digital_write",
-                                "id": "#W,LCNXs72;Sg|_#*?/f",
+                                "id": "7nF{,C[F)Q35^@p/$kUV",
                                 "fields": {
                                   "DPIN": 2,
                                   "LEVEL": "LOW"
@@ -51,7 +51,7 @@
                                 "next": {
                                   "block": {
                                     "type": "hw_wait",
-                                    "id": "({nm~L+2yOUJ@m+l$DJw",
+                                    "id": "`u;@Sd:3.:zi)C#;dMWB",
                                     "fields": {
                                       "MS": 500
                                     }

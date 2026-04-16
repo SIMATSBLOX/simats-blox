@@ -2,25 +2,25 @@
   "version": 1,
   "projectName": "Example: Servo sweep",
   "boardId": "esp32",
-  "description": "Angles 0° / 90° / 180° on GPIO18. MicroPython preview currently emits a short PWM teaching comment per write — use calibrated pulse widths on real hardware.",
+  "description": "Angles 0° / 90° / 180° on GPIO18. MicroPython preview emits teaching PWM notes — tune pulse width on hardware.",
   "blockly": {
     "blocks": {
       "languageVersion": 0,
       "blocks": [
         {
           "type": "esp32_when_starts",
-          "id": "w$/_w#JCY2_N-fGRsIA1",
+          "id": "#mQR9#g-=VRF+hwoMn+:",
           "x": 20,
           "y": 20,
           "next": {
             "block": {
               "type": "hw_forever",
-              "id": "o`3Q@Vz:sBONmz]ZmBpl",
+              "id": "op-fyn@lL?vjFFm_O#0H",
               "inputs": {
                 "DO": {
                   "block": {
                     "type": "output_servo_write",
-                    "id": "Kxd0iB5JH{yR/V7Z-IbV",
+                    "id": "bkt.-Mpk+465N!^97.Qw",
                     "fields": {
                       "DPIN": 18,
                       "ANGLE": 0
@@ -28,14 +28,14 @@
                     "next": {
                       "block": {
                         "type": "hw_wait",
-                        "id": "M:~TB[dfTmC8k`[4.QN7",
+                        "id": "Mwu_`VAHrkq:h1*]Qn;7",
                         "fields": {
                           "MS": 800
                         },
                         "next": {
                           "block": {
                             "type": "output_servo_write",
-                            "id": "Lg*DO6}fgtcdqIo;}cjt",
+                            "id": "[j:|^Jr%OC#j!OY{U?z^",
                             "fields": {
                               "DPIN": 18,
                               "ANGLE": 90
@@ -43,14 +43,14 @@
                             "next": {
                               "block": {
                                 "type": "hw_wait",
-                                "id": "26Iv@Vh2:?`gfbZ*zhkV",
+                                "id": "vLgN0z|jh^KEE~46Ger2",
                                 "fields": {
                                   "MS": 800
                                 },
                                 "next": {
                                   "block": {
                                     "type": "output_servo_write",
-                                    "id": "^=|1{aOptSiWn0.4x.Qw",
+                                    "id": "dD|TM..fc[BE#{K~lE9?",
                                     "fields": {
                                       "DPIN": 18,
                                       "ANGLE": 180
@@ -58,7 +58,7 @@
                                     "next": {
                                       "block": {
                                         "type": "hw_wait",
-                                        "id": "ttja]1G*k0sSX:%bt5v]",
+                                        "id": "fJjS:;bhUNv+!.MJOb~o",
                                         "fields": {
                                           "MS": 800
                                         }

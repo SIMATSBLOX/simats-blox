@@ -1,4 +1,5 @@
 import { fieldMs } from './pinFields.js';
+import { shadowLogicBoolean } from './valueInputShadows.js';
 
 /** Extra control blocks not covered by core Blockly library. */
 /** @type {import('blockly/core/utils/json').BlockDefinitionJson[]} */
@@ -16,7 +17,14 @@ export const controlExtrasDefinitions = [
   {
     type: 'hw_wait_until',
     message0: 'wait until %1',
-    args0: [{ type: 'input_value', name: 'COND', check: 'Boolean' }],
+    args0: [
+      {
+        type: 'input_value',
+        name: 'COND',
+        check: 'Boolean',
+        shadow: shadowLogicBoolean(true),
+      },
+    ],
     inputsInline: true,
     previousStatement: null,
     nextStatement: null,

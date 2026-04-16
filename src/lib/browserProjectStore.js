@@ -58,7 +58,7 @@ export function putBrowserProject(payload) {
       return t || 'Untitled project';
     })(),
     description: typeof payload.description === 'string' ? payload.description : '',
-    boardId: payload.boardId === 'esp32' ? 'esp32' : 'arduino_uno',
+    boardId: 'esp32',
     blockly: payload.blockly,
     updatedAt: new Date().toISOString(),
   };

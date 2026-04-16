@@ -9,13 +9,13 @@
       "blocks": [
         {
           "type": "esp32_when_starts",
-          "id": "m0jf1gLu[Y2`}D[3fxDK",
+          "id": "7,v!v!MITYQ{[1yE8KIg",
           "x": 20,
           "y": 20,
           "next": {
             "block": {
               "type": "mblock_motor_connect",
-              "id": "5BK7_$gq#BS)S?b42RK)",
+              "id": "l|/:z84LO!P=a5D1NhFx",
               "fields": {
                 "MID": 1,
                 "D1": 2,
@@ -25,12 +25,12 @@
               "next": {
                 "block": {
                   "type": "hw_forever",
-                  "id": "k8Jzb_L7=)S}joy[`bB=",
+                  "id": "+B%?:?tuGH$]k6K6?AgK",
                   "inputs": {
                     "DO": {
                       "block": {
                         "type": "mblock_motor_run",
-                        "id": "NC?o#B1,^IL7l;%9Dg/0",
+                        "id": "ev_Y`_@xy*7!6%ZZq$z[",
                         "fields": {
                           "MID": 1,
                           "MDIR": "FWD",
@@ -39,7 +39,7 @@
                         "next": {
                           "block": {
                             "type": "hw_wait",
-                            "id": ",4h]])8ywAeS)O8#(66l",
+                            "id": "O-G@1D9=LfeiIqF9g4/L",
                             "fields": {
                               "MS": 2000
                             }

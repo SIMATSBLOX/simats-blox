@@ -1,7 +1,19 @@
 import { getReadingsPostUrl } from './apiConfig.js';
 import { getSensorPresetByType } from './sensorAddPresets.js';
 
-const SUPPORTED_SENSOR_TYPES = new Set(['dht11', 'soil_moisture', 'ultrasonic', 'ir_sensor', 'lm35', 'custom']);
+const SUPPORTED_SENSOR_TYPES = new Set([
+  'dht11',
+  'lm35',
+  'mq2',
+  'pir',
+  'ldr',
+  'ultrasonic',
+  'bmp280',
+  'soil_moisture',
+  'rain_sensor',
+  'ir_sensor',
+  'custom',
+]);
 
 /** True when we can emit complete firmware (real device key only — no placeholders for learners). */
 export function hasUsableDeviceKeyForSamples(apiKey) {
@@ -52,11 +64,41 @@ export function getEsp32Samples(sensorType, ctx) {
         arduino: buildEsp32Dht11ArduinoSketch(base),
         micropython: buildEsp32Dht11MicroPythonScript(base),
       };
+    case 'mq2':
+      return {
+        label,
+        arduino: buildEsp32Mq2Arduino(base),
+        micropython: buildEsp32Mq2MicroPython(base),
+      };
+    case 'pir':
+      return {
+        label,
+        arduino: buildEsp32PirArduino(base),
+        micropython: buildEsp32PirMicroPython(base),
+      };
+    case 'ldr':
+      return {
+        label,
+        arduino: buildEsp32LdrArduino(base),
+        micropython: buildEsp32LdrMicroPython(base),
+      };
     case 'soil_moisture':
       return {
         label,
         arduino: buildEsp32SoilMoistureArduino(base),
         micropython: buildEsp32SoilMoistureMicroPython(base),
+      };
+    case 'rain_sensor':
+      return {
+        label,
+        arduino: buildEsp32RainSensorArduino(base),
+        micropython: buildEsp32RainSensorMicroPython(base),
+      };
+    case 'bmp280':
+      return {
+        label,
+        arduino: buildEsp32Bmp280Arduino(base),
+        micropython: buildEsp32Bmp280MicroPython(base),
       };
     case 'ultrasonic':
       return {
@@ -468,13 +510,13 @@ function buildEsp32IrArduino(p) {
   const key = String(p.apiKey ?? '').trim();
   return `/*
  * SIMATS BLOX — IR obstacle sensor → irDetected JSON
- * GPIO 5, INPUT_PULLUP (adjust HIGH/LOW to match your module).
+ * GPIO 14, INPUT_PULLUP (matches IDE examples; adjust HIGH/LOW for your module).
  */
 #include <WiFi.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
 
-const int IR_PIN = 5;
+const int IR_PIN = 14;
 
 const char *WIFI_SSID = "YOUR_WIFI_SSID";
 const char *WIFI_PASS = "YOUR_WIFI_PASSWORD";
@@ -530,7 +572,7 @@ from machine import Pin
 READINGS_URL = "${pyEscapeDoubleQuoted(readUrl)}"
 DEVICE_ID = "${pyEscapeDoubleQuoted(deviceId)}"
 DEVICE_KEY = "${pyEscapeDoubleQuoted(key)}"
-IR = Pin(5, Pin.IN, Pin.PULL_UP)
+IR = Pin(14, Pin.IN, Pin.PULL_UP)
 WIFI_SSID = "YOUR_WIFI_SSID"
 WIFI_PASSWORD = "YOUR_WIFI_PASSWORD"
 
@@ -639,6 +681,449 @@ adc = ADC(Pin(35))
 adc.atten(ADC.ATTN_11DB)
 while True:
     body = json.dumps({"deviceId": DEVICE_ID, "sensorType": "lm35", "data": {"temperature": temp_c(adc)}})
+    r = urequests.post(READINGS_URL, data=body, headers={"Content-Type": "application/json", "x-device-key": DEVICE_KEY})
+    r.close()
+    time.sleep(3)
+`;
+}
+
+function buildEsp32Mq2Arduino(p) {
+  const readUrl = p.readingsUrl || getReadingsPostUrl();
+  const deviceId = String(p.deviceId ?? '').trim() || 'your_device_id';
+  const key = String(p.apiKey ?? '').trim();
+  return `/*
+ * SIMATS BLOX — MQ-2 analog → gasLevel JSON (raw ADC)
+ * GPIO 32 ADC1 — heat sensor per datasheet; value is unscaled raw read.
+ */
+#include <WiFi.h>
+#include <HTTPClient.h>
+#include <ArduinoJson.h>
+
+const int MQ_PIN = 32;
+
+const char *WIFI_SSID = "YOUR_WIFI_SSID";
+const char *WIFI_PASS = "YOUR_WIFI_PASSWORD";
+const char *READINGS_URL = "${cEscape(readUrl)}";
+const char *DEVICE_ID = "${cEscape(deviceId)}";
+const char *DEVICE_KEY = "${cEscape(key)}";
+
+void setup() {
+  Serial.begin(115200);
+  analogSetAttenuation(ADC_11db);
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(WIFI_SSID, WIFI_PASS);
+  while (WiFi.status() != WL_CONNECTED) { delay(400); Serial.print("."); }
+  Serial.println(" WiFi OK");
+}
+
+void loop() {
+  delay(2000);
+  int raw = analogRead(MQ_PIN);
+
+  WiFiClient client;
+  HTTPClient http;
+  http.begin(client, READINGS_URL);
+  http.addHeader("Content-Type", "application/json");
+  http.addHeader("x-device-key", DEVICE_KEY);
+
+  StaticJsonDocument<192> doc;
+  doc["deviceId"] = DEVICE_ID;
+  doc["sensorType"] = "mq2";
+  JsonObject dataObj = doc.createNestedObject("data");
+  dataObj["gasLevel"] = raw;
+
+  String body;
+  serializeJson(doc, body);
+  http.POST(body);
+  http.end();
+}
+`;
+}
+
+function buildEsp32Mq2MicroPython(p) {
+  const readUrl = p.readingsUrl || getReadingsPostUrl();
+  const deviceId = String(p.deviceId ?? '').trim() || 'your_device_id';
+  const key = String(p.apiKey ?? '').trim();
+  return `# SIMATS BLOX — MQ-2 → POST (raw ADC)
+try:
+    import urequests
+except ImportError:
+    import mip; mip.install("urequests"); import urequests
+import network, time, json
+from machine import ADC, Pin
+
+READINGS_URL = "${pyEscapeDoubleQuoted(readUrl)}"
+DEVICE_ID = "${pyEscapeDoubleQuoted(deviceId)}"
+DEVICE_KEY = "${pyEscapeDoubleQuoted(key)}"
+WIFI_SSID = "YOUR_WIFI_SSID"
+WIFI_PASSWORD = "YOUR_WIFI_PASSWORD"
+
+def wifi():
+    w = network.WLAN(network.STA_IF); w.active(True); w.connect(WIFI_SSID, WIFI_PASSWORD)
+    while not w.isconnected(): time.sleep_ms(400)
+
+wifi()
+adc = ADC(Pin(32))
+adc.atten(ADC.ATTN_11DB)
+while True:
+    body = json.dumps({"deviceId": DEVICE_ID, "sensorType": "mq2", "data": {"gasLevel": adc.read()}})
+    r = urequests.post(READINGS_URL, data=body, headers={"Content-Type": "application/json", "x-device-key": DEVICE_KEY})
+    r.close()
+    time.sleep(2)
+`;
+}
+
+function buildEsp32PirArduino(p) {
+  const readUrl = p.readingsUrl || getReadingsPostUrl();
+  const deviceId = String(p.deviceId ?? '').trim() || 'your_device_id';
+  const key = String(p.apiKey ?? '').trim();
+  return `/*
+ * SIMATS BLOX — PIR HC-SR501 → motionDetected JSON
+ * OUT -> GPIO 27, INPUT (no pull — module drives the line).
+ */
+#include <WiFi.h>
+#include <HTTPClient.h>
+#include <ArduinoJson.h>
+
+const int PIR_PIN = 27;
+
+const char *WIFI_SSID = "YOUR_WIFI_SSID";
+const char *WIFI_PASS = "YOUR_WIFI_PASSWORD";
+const char *READINGS_URL = "${cEscape(readUrl)}";
+const char *DEVICE_ID = "${cEscape(deviceId)}";
+const char *DEVICE_KEY = "${cEscape(key)}";
+
+void setup() {
+  Serial.begin(115200);
+  pinMode(PIR_PIN, INPUT);
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(WIFI_SSID, WIFI_PASS);
+  while (WiFi.status() != WL_CONNECTED) { delay(400); Serial.print("."); }
+  Serial.println(" WiFi OK");
+}
+
+void loop() {
+  delay(800);
+  bool motion = digitalRead(PIR_PIN) == HIGH;
+
+  WiFiClient client;
+  HTTPClient http;
+  http.begin(client, READINGS_URL);
+  http.addHeader("Content-Type", "application/json");
+  http.addHeader("x-device-key", DEVICE_KEY);
+
+  StaticJsonDocument<192> doc;
+  doc["deviceId"] = DEVICE_ID;
+  doc["sensorType"] = "pir";
+  JsonObject dataObj = doc.createNestedObject("data");
+  dataObj["motionDetected"] = motion;
+
+  String body;
+  serializeJson(doc, body);
+  http.POST(body);
+  http.end();
+}
+`;
+}
+
+function buildEsp32PirMicroPython(p) {
+  const readUrl = p.readingsUrl || getReadingsPostUrl();
+  const deviceId = String(p.deviceId ?? '').trim() || 'your_device_id';
+  const key = String(p.apiKey ?? '').trim();
+  return `# SIMATS BLOX — PIR → POST
+try:
+    import urequests
+except ImportError:
+    import mip; mip.install("urequests"); import urequests
+import network, time, json
+from machine import Pin
+
+READINGS_URL = "${pyEscapeDoubleQuoted(readUrl)}"
+DEVICE_ID = "${pyEscapeDoubleQuoted(deviceId)}"
+DEVICE_KEY = "${pyEscapeDoubleQuoted(key)}"
+PIR = Pin(27, Pin.IN)
+WIFI_SSID = "YOUR_WIFI_SSID"
+WIFI_PASSWORD = "YOUR_WIFI_PASSWORD"
+
+def wifi():
+    w = network.WLAN(network.STA_IF); w.active(True); w.connect(WIFI_SSID, WIFI_PASSWORD)
+    while not w.isconnected(): time.sleep_ms(400)
+
+wifi()
+while True:
+    motion = PIR.value() == 1
+    body = json.dumps({"deviceId": DEVICE_ID, "sensorType": "pir", "data": {"motionDetected": bool(motion)}})
+    r = urequests.post(READINGS_URL, data=body, headers={"Content-Type": "application/json", "x-device-key": DEVICE_KEY})
+    r.close()
+    time.sleep(0.8)
+`;
+}
+
+function buildEsp32LdrArduino(p) {
+  const readUrl = p.readingsUrl || getReadingsPostUrl();
+  const deviceId = String(p.deviceId ?? '').trim() || 'your_device_id';
+  const key = String(p.apiKey ?? '').trim();
+  return `/*
+ * SIMATS BLOX — LDR divider → lightLevel JSON (raw ADC)
+ * GPIO 33 ADC1
+ */
+#include <WiFi.h>
+#include <HTTPClient.h>
+#include <ArduinoJson.h>
+
+const int LDR_PIN = 33;
+
+const char *WIFI_SSID = "YOUR_WIFI_SSID";
+const char *WIFI_PASS = "YOUR_WIFI_PASSWORD";
+const char *READINGS_URL = "${cEscape(readUrl)}";
+const char *DEVICE_ID = "${cEscape(deviceId)}";
+const char *DEVICE_KEY = "${cEscape(key)}";
+
+void setup() {
+  Serial.begin(115200);
+  analogSetAttenuation(ADC_11db);
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(WIFI_SSID, WIFI_PASS);
+  while (WiFi.status() != WL_CONNECTED) { delay(400); Serial.print("."); }
+  Serial.println(" WiFi OK");
+}
+
+void loop() {
+  delay(2000);
+  int raw = analogRead(LDR_PIN);
+
+  WiFiClient client;
+  HTTPClient http;
+  http.begin(client, READINGS_URL);
+  http.addHeader("Content-Type", "application/json");
+  http.addHeader("x-device-key", DEVICE_KEY);
+
+  StaticJsonDocument<192> doc;
+  doc["deviceId"] = DEVICE_ID;
+  doc["sensorType"] = "ldr";
+  JsonObject dataObj = doc.createNestedObject("data");
+  dataObj["lightLevel"] = raw;
+
+  String body;
+  serializeJson(doc, body);
+  http.POST(body);
+  http.end();
+}
+`;
+}
+
+function buildEsp32LdrMicroPython(p) {
+  const readUrl = p.readingsUrl || getReadingsPostUrl();
+  const deviceId = String(p.deviceId ?? '').trim() || 'your_device_id';
+  const key = String(p.apiKey ?? '').trim();
+  return `# SIMATS BLOX — LDR → POST
+try:
+    import urequests
+except ImportError:
+    import mip; mip.install("urequests"); import urequests
+import network, time, json
+from machine import ADC, Pin
+
+READINGS_URL = "${pyEscapeDoubleQuoted(readUrl)}"
+DEVICE_ID = "${pyEscapeDoubleQuoted(deviceId)}"
+DEVICE_KEY = "${pyEscapeDoubleQuoted(key)}"
+WIFI_SSID = "YOUR_WIFI_SSID"
+WIFI_PASSWORD = "YOUR_WIFI_PASSWORD"
+
+def wifi():
+    w = network.WLAN(network.STA_IF); w.active(True); w.connect(WIFI_SSID, WIFI_PASSWORD)
+    while not w.isconnected(): time.sleep_ms(400)
+
+wifi()
+adc = ADC(Pin(33))
+adc.atten(ADC.ATTN_11DB)
+while True:
+    body = json.dumps({"deviceId": DEVICE_ID, "sensorType": "ldr", "data": {"lightLevel": adc.read()}})
+    r = urequests.post(READINGS_URL, data=body, headers={"Content-Type": "application/json", "x-device-key": DEVICE_KEY})
+    r.close()
+    time.sleep(2)
+`;
+}
+
+function buildEsp32RainSensorArduino(p) {
+  const readUrl = p.readingsUrl || getReadingsPostUrl();
+  const deviceId = String(p.deviceId ?? '').trim() || 'your_device_id';
+  const key = String(p.apiKey ?? '').trim();
+  return `/*
+ * SIMATS BLOX — Rain sensor analog → rainLevel JSON (raw ADC)
+ * GPIO 39 ADC1
+ */
+#include <WiFi.h>
+#include <HTTPClient.h>
+#include <ArduinoJson.h>
+
+const int RAIN_PIN = 39;
+
+const char *WIFI_SSID = "YOUR_WIFI_SSID";
+const char *WIFI_PASS = "YOUR_WIFI_PASSWORD";
+const char *READINGS_URL = "${cEscape(readUrl)}";
+const char *DEVICE_ID = "${cEscape(deviceId)}";
+const char *DEVICE_KEY = "${cEscape(key)}";
+
+void setup() {
+  Serial.begin(115200);
+  analogSetAttenuation(ADC_11db);
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(WIFI_SSID, WIFI_PASS);
+  while (WiFi.status() != WL_CONNECTED) { delay(400); Serial.print("."); }
+  Serial.println(" WiFi OK");
+}
+
+void loop() {
+  delay(2000);
+  int raw = analogRead(RAIN_PIN);
+
+  WiFiClient client;
+  HTTPClient http;
+  http.begin(client, READINGS_URL);
+  http.addHeader("Content-Type", "application/json");
+  http.addHeader("x-device-key", DEVICE_KEY);
+
+  StaticJsonDocument<192> doc;
+  doc["deviceId"] = DEVICE_ID;
+  doc["sensorType"] = "rain_sensor";
+  JsonObject dataObj = doc.createNestedObject("data");
+  dataObj["rainLevel"] = raw;
+
+  String body;
+  serializeJson(doc, body);
+  http.POST(body);
+  http.end();
+}
+`;
+}
+
+function buildEsp32RainSensorMicroPython(p) {
+  const readUrl = p.readingsUrl || getReadingsPostUrl();
+  const deviceId = String(p.deviceId ?? '').trim() || 'your_device_id';
+  const key = String(p.apiKey ?? '').trim();
+  return `# SIMATS BLOX — Rain sensor → POST
+try:
+    import urequests
+except ImportError:
+    import mip; mip.install("urequests"); import urequests
+import network, time, json
+from machine import ADC, Pin
+
+READINGS_URL = "${pyEscapeDoubleQuoted(readUrl)}"
+DEVICE_ID = "${pyEscapeDoubleQuoted(deviceId)}"
+DEVICE_KEY = "${pyEscapeDoubleQuoted(key)}"
+WIFI_SSID = "YOUR_WIFI_SSID"
+WIFI_PASSWORD = "YOUR_WIFI_PASSWORD"
+
+def wifi():
+    w = network.WLAN(network.STA_IF); w.active(True); w.connect(WIFI_SSID, WIFI_PASSWORD)
+    while not w.isconnected(): time.sleep_ms(400)
+
+wifi()
+adc = ADC(Pin(39))
+adc.atten(ADC.ATTN_11DB)
+while True:
+    body = json.dumps({"deviceId": DEVICE_ID, "sensorType": "rain_sensor", "data": {"rainLevel": adc.read()}})
+    r = urequests.post(READINGS_URL, data=body, headers={"Content-Type": "application/json", "x-device-key": DEVICE_KEY})
+    r.close()
+    time.sleep(2)
+`;
+}
+
+function buildEsp32Bmp280Arduino(p) {
+  const readUrl = p.readingsUrl || getReadingsPostUrl();
+  const deviceId = String(p.deviceId ?? '').trim() || 'your_device_id';
+  const key = String(p.apiKey ?? '').trim();
+  return `/*
+ * SIMATS BLOX — BMP280 I2C → temperature + pressure JSON
+ * Install "Adafruit BMP280" + "Adafruit Unified Sensor" + Wire.
+ * Default I2C 0x76; SDA/SCL per your board (often 21/22).
+ */
+#include <WiFi.h>
+#include <HTTPClient.h>
+#include <ArduinoJson.h>
+#include <Wire.h>
+#include <Adafruit_BMP280.h>
+
+Adafruit_BMP280 bmp;
+
+const char *WIFI_SSID = "YOUR_WIFI_SSID";
+const char *WIFI_PASS = "YOUR_WIFI_PASSWORD";
+const char *READINGS_URL = "${cEscape(readUrl)}";
+const char *DEVICE_ID = "${cEscape(deviceId)}";
+const char *DEVICE_KEY = "${cEscape(key)}";
+
+void setup() {
+  Serial.begin(115200);
+  Wire.begin();
+  if (!bmp.begin(0x76) && !bmp.begin(0x77)) {
+    Serial.println("BMP280 not found");
+    while (1) delay(1000);
+  }
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(WIFI_SSID, WIFI_PASS);
+  while (WiFi.status() != WL_CONNECTED) { delay(400); Serial.print("."); }
+  Serial.println(" WiFi OK");
+}
+
+void loop() {
+  delay(3000);
+  float t = bmp.readTemperature();
+  float p = bmp.readPressure() / 100.0f;
+
+  WiFiClient client;
+  HTTPClient http;
+  http.begin(client, READINGS_URL);
+  http.addHeader("Content-Type", "application/json");
+  http.addHeader("x-device-key", DEVICE_KEY);
+
+  StaticJsonDocument<256> doc;
+  doc["deviceId"] = DEVICE_ID;
+  doc["sensorType"] = "bmp280";
+  JsonObject dataObj = doc.createNestedObject("data");
+  dataObj["temperature"] = t;
+  dataObj["pressure"] = p;
+
+  String body;
+  serializeJson(doc, body);
+  http.POST(body);
+  http.end();
+}
+`;
+}
+
+function buildEsp32Bmp280MicroPython(p) {
+  const readUrl = p.readingsUrl || getReadingsPostUrl();
+  const deviceId = String(p.deviceId ?? '').trim() || 'your_device_id';
+  const key = String(p.apiKey ?? '').trim();
+  return `# SIMATS BLOX — BMP280 → POST (install bmp280 on your firmware build)
+try:
+    import urequests
+except ImportError:
+    import mip; mip.install("urequests"); import urequests
+import network, time, json
+from machine import Pin, I2C
+
+READINGS_URL = "${pyEscapeDoubleQuoted(readUrl)}"
+DEVICE_ID = "${pyEscapeDoubleQuoted(deviceId)}"
+DEVICE_KEY = "${pyEscapeDoubleQuoted(key)}"
+WIFI_SSID = "YOUR_WIFI_SSID"
+WIFI_PASSWORD = "YOUR_WIFI_PASSWORD"
+
+def wifi():
+    w = network.WLAN(network.STA_IF); w.active(True); w.connect(WIFI_SSID, WIFI_PASSWORD)
+    while not w.isconnected(): time.sleep_ms(400)
+
+# Example: from bmp280 import BMP280
+# i2c = I2C(0, scl=Pin(22), sda=Pin(21))
+# bmp = BMP280(i2c)
+
+wifi()
+while True:
+    # Replace with real reads, e.g. bmp.temperature, bmp.pressure/100
+    t, p_hpa = 0.0, 1013.25
+    body = json.dumps({"deviceId": DEVICE_ID, "sensorType": "bmp280", "data": {"temperature": t, "pressure": p_hpa}})
     r = urequests.post(READINGS_URL, data=body, headers={"Content-Type": "application/json", "x-device-key": DEVICE_KEY})
     r.close()
     time.sleep(3)

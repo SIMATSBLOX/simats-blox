@@ -58,38 +58,28 @@ function PrepareCodePrompt({ variant, successMode, onPrepareCode }) {
   }
 
   return (
-    <div className="mt-3 rounded-lg border border-amber-900/35 bg-amber-950/20 px-3 py-2.5">
+    <div className="rounded-lg border border-amber-900/35 bg-amber-950/15 px-2.5 py-2">
       <div className="flex flex-wrap items-center gap-2">
         <Code2 className="h-3.5 w-3.5 text-amber-200/80" aria-hidden />
-        <span className="text-[10px] font-semibold uppercase tracking-wide text-amber-200/90">Prepare code</span>
+        <span className="text-[10px] font-medium text-amber-200/90">Save device key in this browser</span>
       </div>
-      <p className="mt-1.5 text-[10px] leading-snug text-slate-300">
-        Ready-to-use firmware is only copied when this browser knows your <strong>device key</strong> (it stays in local
-        storage, not on our servers).
+      <p className="mt-1 text-[10px] leading-snug text-slate-400">
+        Paste the key once under{' '}
+        <Link to="/devices?tab=setup" className="text-studio-accent hover:underline">
+          Setup
+        </Link>
+        , or use <strong className="text-slate-300">Save for IDE</strong> after a new key. Then copy buttons unlock.
       </p>
-      <ul className="mt-2 list-disc space-y-1 pl-4 text-[10px] text-slate-400">
-        <li>
-          <strong className="text-slate-300">New sensor on another device?</strong> Open{' '}
-          <Link to="/devices?tab=setup" className="text-studio-accent hover:underline">
-            Setup → Connect sensor readings from the IDE
-          </Link>{' '}
-          and paste the key once.
-        </li>
-        <li>
-          <strong className="text-slate-300">New key after “Issue new device key”?</strong> Copy it, then tap{' '}
-          <strong className="text-slate-300">Save for IDE &amp; samples</strong> in the yellow banner.
-        </li>
-      </ul>
-      <div className="mt-3 flex flex-wrap gap-2">
+      <div className="mt-2 flex flex-wrap gap-2">
         <Link
           to="/devices?tab=setup"
-          className="inline-flex items-center justify-center rounded border border-studio-accent/60 bg-studio-accent/15 px-2.5 py-1 text-[10px] font-medium text-studio-accent hover:bg-studio-accent/25"
+          className="inline-flex items-center justify-center rounded border border-studio-accent/50 bg-studio-accent/12 px-2 py-1 text-[10px] font-medium text-studio-accent hover:bg-studio-accent/20"
         >
-          Go to Setup
+          Open Setup
         </Link>
         {onPrepareCode ? (
           <Button type="button" variant="ghost" className="!px-2 !py-1 !text-[10px]" onClick={onPrepareCode}>
-            Open Advanced on this card
+            Advanced
           </Button>
         ) : null}
       </div>
@@ -156,10 +146,10 @@ export default function DeviceHardwareSampleCode({
         type="button"
         variant="default"
         className="!gap-1 !px-2 !py-1 !text-[10px]"
-        onClick={() => void copyText('Arduino sample copied.', samples.arduino)}
+        onClick={() => void copyText('C++ (ESP32) sample copied.', samples.arduino)}
       >
         <Copy className="h-3 w-3" aria-hidden />
-        Copy Arduino
+        Copy C++ (ESP32)
       </Button>
       <Button
         type="button"
@@ -178,49 +168,49 @@ export default function DeviceHardwareSampleCode({
   }
 
   return (
-    <div className="mt-3 rounded-lg border border-slate-600/40 bg-[#25292f]/90 px-3 py-2.5">
-      <div className="flex flex-wrap items-center gap-2">
-        <Code2 className="h-3.5 w-3.5 text-studio-muted" aria-hidden />
-        <span className="text-[10px] font-semibold uppercase tracking-wide text-studio-muted">Sample code</span>
+    <div className="rounded-lg border border-studio-border/45 bg-[#22262c]/80 px-2.5 py-2">
+      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+        <span className="text-[10px] font-medium text-slate-400">Sample code</span>
         <span className="text-[10px] text-slate-500">{samples.label}</span>
       </div>
-      <p className="mt-1.5 text-[10px] leading-snug text-slate-400">
-        {hintSuccess ?? (
-          <>
-            Includes <span className="text-slate-300">Wi‑Fi placeholders</span>,{' '}
-            <span className="text-slate-300">cloud URL</span>, <span className="text-slate-300">sensor ID</span>, and{' '}
-            <span className="text-slate-300">your device key</span> — ready to paste into the Arduino or MicroPython
-            editor.
-          </>
-        )}
+      <p className="mt-1 text-[10px] leading-snug text-slate-500">
+        {hintSuccess ??
+          'Wi‑Fi, cloud URL, ID, and key are in the snippet — paste into the Arduino‑ESP32 core or a MicroPython editor.'}
       </p>
-      <div className="mt-2 flex flex-wrap gap-2">
-        {buttons}
-        <Button
-          type="button"
-          variant="ghost"
-          className="!px-2 !py-1 !text-[10px]"
-          onClick={() => setPreview((p) => (p === 'arduino' ? null : 'arduino'))}
-        >
-          {preview === 'arduino' ? 'Hide' : 'Preview'} Arduino
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          className="!px-2 !py-1 !text-[10px]"
-          onClick={() => setPreview((p) => (p === 'micropython' ? null : 'micropython'))}
-        >
-          {preview === 'micropython' ? 'Hide' : 'Preview'} MicroPython
-        </Button>
-      </div>
-      {preview ? (
-        <pre
-          className="mt-2 max-h-48 overflow-auto rounded border border-studio-border/60 bg-[#14171b] p-2 font-mono text-[9px] leading-relaxed text-emerald-100/95"
-          tabIndex={0}
-        >
-          {preview === 'arduino' ? samples.arduino : samples.micropython}
-        </pre>
-      ) : null}
+      <div className="mt-2 flex flex-wrap gap-2">{buttons}</div>
+      <details className="mt-2 rounded border border-studio-border/35 bg-[#1a1d22]/60">
+        <summary className="cursor-pointer list-none px-2 py-1.5 text-[10px] text-slate-500 hover:text-slate-400 [&::-webkit-details-marker]:hidden">
+          Preview code (optional)
+        </summary>
+        <div className="border-t border-studio-border/35 px-2 pb-2 pt-2">
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              className="!px-2 !py-0.5 !text-[10px]"
+              onClick={() => setPreview((p) => (p === 'arduino' ? null : 'arduino'))}
+            >
+              {preview === 'arduino' ? 'Hide' : 'Show'} C++ (ESP32)
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              className="!px-2 !py-0.5 !text-[10px]"
+              onClick={() => setPreview((p) => (p === 'micropython' ? null : 'micropython'))}
+            >
+              {preview === 'micropython' ? 'Hide' : 'Show'} MicroPython
+            </Button>
+          </div>
+          {preview ? (
+            <pre
+              className="mt-2 max-h-40 overflow-auto rounded border border-studio-border/50 bg-[#14171b] p-2 font-mono text-[9px] leading-relaxed text-emerald-100/95"
+              tabIndex={0}
+            >
+              {preview === 'arduino' ? samples.arduino : samples.micropython}
+            </pre>
+          ) : null}
+        </div>
+      </details>
     </div>
   );
 }

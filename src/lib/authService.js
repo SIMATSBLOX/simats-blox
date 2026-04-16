@@ -26,19 +26,41 @@ export function initSupabaseAuth() {
   useIdeStore.getState().setSupabaseCloudConfigured(true);
   const supabase = requireClient();
 
-  void supabase.auth.getSession().then(({ data: { session } }) => {
-    useCloudAuthStore.getState().setFromSession(session);
-    refreshPersistTarget();
-  });
+  /**
+   * End "initial auth" only once. Never use getSession().finally(false) alone: it can run with
+   * session=null before onAuthStateChange applies storage (then /devices sees unauthenticated → /).
+   */
+  let initialHydrationDone = false;
+  const finishInitialHydration = () => {
+    if (initialHydrationDone) return;
+    initialHydrationDone = true;
+    useCloudAuthStore.getState().setAuthLoading(false);
+  };
 
   const {
     data: { subscription },
   } = supabase.auth.onAuthStateChange((_event, session) => {
     useCloudAuthStore.getState().setFromSession(session);
     refreshPersistTarget();
+    finishInitialHydration();
   });
 
+  void supabase.auth
+    .getSession()
+    .then(({ data: { session } }) => {
+      useCloudAuthStore.getState().setFromSession(session);
+      refreshPersistTarget();
+      if (session) finishInitialHydration();
+    })
+    .catch(() => {
+      finishInitialHydration();
+    });
+
+  const safetyMs = 4000;
+  const safety = window.setTimeout(finishInitialHydration, safetyMs);
+
   return () => {
+    window.clearTimeout(safety);
     subscription.unsubscribe();
   };
 }

@@ -11,6 +11,8 @@ export default function IDEPage() {
   const showedAuthHint = useRef(false);
 
   const deviceId = useMemo(() => searchParams.get('device')?.trim() ?? '', [searchParams]);
+  const liveMonitorDeviceId = useMemo(() => searchParams.get('monitor')?.trim() ?? '', [searchParams]);
+  const liveMonitorSensorTypeHint = useMemo(() => searchParams.get('mt')?.trim() ?? '', [searchParams]);
   const kit = searchParams.get('kit') === '1';
   const typeFromUrl = searchParams.get('type')?.trim() ?? '';
 
@@ -30,6 +32,13 @@ export default function IDEPage() {
     next.delete('device');
     next.delete('kit');
     next.delete('type');
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
+
+  const closeLiveMonitor = useCallback(() => {
+    const next = new URLSearchParams(searchParams);
+    next.delete('monitor');
+    next.delete('mt');
     setSearchParams(next, { replace: true });
   }, [searchParams, setSearchParams]);
 
@@ -64,7 +73,11 @@ export default function IDEPage() {
         />
       ) : null}
       <div className="min-h-0 flex-1 overflow-hidden">
-        <IDEStudio />
+        <IDEStudio
+          liveMonitorDeviceId={liveMonitorDeviceId}
+          liveMonitorSensorTypeHint={liveMonitorSensorTypeHint}
+          onCloseLiveMonitor={closeLiveMonitor}
+        />
       </div>
     </div>
   );

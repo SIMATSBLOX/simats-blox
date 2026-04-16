@@ -104,6 +104,36 @@ function lookupMblockMotorPins(ws, board, midKey) {
   return null;
 }
 
+/** STEMpedia DabbleESP32 `INCLUDE_*` tokens (see library ModuleSelection.h). */
+const DABBLE_MOD = Object.freeze({
+  INPUTS: 'INCLUDE_DABBLEINPUTS_MODULE',
+  MOTOR: 'INCLUDE_MOTORCONTROL_MODULE',
+  GAMEPAD: 'INCLUDE_GAMEPAD_MODULE',
+  TERMINAL: 'INCLUDE_TERMINAL_MODULE',
+  SENSOR: 'INCLUDE_SENSOR_MODULE',
+  CAMERA: 'INCLUDE_CAMERA_MODULE',
+  LED: 'INCLUDE_LEDCONTROL_MODULE',
+  COLOR: 'INCLUDE_COLORDETECTOR_MODULE',
+  PINMON: 'INCLUDE_PINMONITOR_MODULE',
+});
+
+/**
+ * Accumulate DabbleESP32 modules and emit one guarded include pack (CUSTOM_SETTINGS + selected modules).
+ * @param {import('blockly/core/generator').CodeGenerator} gen
+ * @param {string[]} modules
+ */
+function dabbleEsp32AddModules(gen, modules) {
+  if (!gen.hwDabbleMods) gen.hwDabbleMods = new Set();
+  for (const m of modules) gen.hwDabbleMods.add(m);
+  const sorted = [...gen.hwDabbleMods].sort();
+  const body = sorted.map((m) => `#define ${m}\n`).join('');
+  gen.definitions_['%dabble_esp32_pack'] =
+    '// Dabble app (ESP32): install STEMpedia "DabbleESP32" from the Library Manager.\n' +
+    '#define CUSTOM_SETTINGS\n' +
+    `${body}` +
+    '#include <DabbleESP32.h>\n';
+}
+
 /** @param {'arduino_uno' | 'esp32'} board
  *  @param {string} port SERPORT field "0"|"1"|"2" */
 function arduinoSerialObjectExpr(board, port) {
@@ -155,6 +185,144 @@ inline float __hw_dht_${id}_readHumidity() {
 }
 `;
   }
+}
+
+function dhtValueBlockSpecArduino(block, board) {
+  if (!block) return null;
+  try {
+    if (block.type === 'sensor_dht_mblock') {
+      const pin = digitalPinLiteral(block, board, 'DPIN', 2);
+      const typ = safeFieldValue(block, 'TYPE', 'DHT11');
+      const fld = safeFieldValue(block, 'DHTFIELD', 'TEMP');
+      return { pin, typ, role: fld === 'HUM' ? 'hum' : 'temp' };
+    }
+    if (block.type === 'sensor_dht_temp') {
+      return {
+        pin: digitalPinLiteral(block, board, 'DPIN', 2),
+        typ: safeFieldValue(block, 'TYPE', 'DHT11'),
+        role: 'temp',
+      };
+    }
+    if (block.type === 'sensor_dht_humidity') {
+      return {
+        pin: digitalPinLiteral(block, board, 'DPIN', 2),
+        typ: safeFieldValue(block, 'TYPE', 'DHT11'),
+        role: 'hum',
+      };
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+function dhtSpecsMatchPinsAndTypeArduino(a, b) {
+  return Boolean(a && b && a.pin === b.pin && a.typ === b.typ);
+}
+
+function isDhtArduinoSerialBridgeMergeFollower(block, board) {
+  const prev = block.getPreviousBlock();
+  if (!prev || prev.type !== 'comm_serial_println') return false;
+  const a = dhtValueBlockSpecArduino(prev.getInputTargetBlock('VAL'), board);
+  const b = dhtValueBlockSpecArduino(block.getInputTargetBlock('VAL'), board);
+  if (!dhtSpecsMatchPinsAndTypeArduino(a, b)) return false;
+  return a.role === 'temp' && b.role === 'hum';
+}
+
+function tryEmitArduinoDhtSerialBridgePrintln(block, gen, board) {
+  const v0 = block.getInputTargetBlock('VAL');
+  if (!v0) return null;
+  const a = dhtValueBlockSpecArduino(v0, board);
+  if (!a || a.role !== 'temp') return null;
+  const next = block.getNextBlock();
+  if (!next || next.type !== 'comm_serial_println') return null;
+  const b = dhtValueBlockSpecArduino(next.getInputTargetBlock('VAL'), board);
+  if (!b || b.role !== 'hum' || !dhtSpecsMatchPinsAndTypeArduino(a, b)) return null;
+  const pin0 = digitalPinLiteral(v0, board, 'DPIN', 2);
+  const typ0 = safeFieldValue(v0, 'TYPE', 'DHT11');
+  try {
+    ensureArduinoDhtSupport(gen, pin0, typ0);
+  } catch {
+    return null;
+  }
+  const id = dhtArduinoId(pin0, typ0);
+  return [
+    '{\n',
+    `  float __dht_t = __hw_dht_${id}_readTempC();\n`,
+    `  float __dht_h = __hw_dht_${id}_readHumidity();\n`,
+    '  Serial.print(F("Humidity: "));\n',
+    '  Serial.print(__dht_h, 1);\n',
+    '  Serial.print(F("%  Temperature: "));\n',
+    '  Serial.print(__dht_t, 1);\n',
+    '  Serial.println(F("\\xC2\\xB0C"));\n',
+    '}\n',
+  ].join('');
+}
+
+/**
+ * @param {import('blockly/core/block').Block} block
+ * @param {import('blockly/core/generator').CodeGenerator} gen
+ * @param {'arduino_uno' | 'esp32'} board
+ */
+function tryArduinoLabeledSensorPrintln(block, gen, board) {
+  const vb = block.getInputTargetBlock('VAL');
+  if (!vb) return null;
+  const code = gen.valueToCode(block, 'VAL', Order.NONE) || '0';
+  const t = vb.type;
+  if (t === 'sensor_ultrasonic_cm' || t === 'sensor_ultrasonic_mblock') {
+    return [
+      'Serial.print(F("Distance: "));\n',
+      `Serial.print(${code}, 2);\n`,
+      'Serial.println(F(" cm"));\n',
+    ].join('');
+  }
+  if (t === 'sensor_soil') {
+    return [
+      'Serial.print(F("Moisture Level: "));\n',
+      `Serial.print(${code});\n`,
+      'Serial.println(F(" %"));\n',
+    ].join('');
+  }
+  if (t === 'sensor_ldr') {
+    return ['Serial.print(F("Light level: "));\n', `Serial.println(${code});\n`].join('');
+  }
+  if (t === 'sensor_gas') {
+    return ['Serial.print(F("Gas level: "));\n', `Serial.println(${code});\n`].join('');
+  }
+  if (t === 'sensor_analog_mblock') {
+    const tag = safeFieldValue(vb, 'ASTYPE', 'LDR');
+    if (tag === 'SOIL') {
+      return [
+        'Serial.print(F("Moisture Level: "));\n',
+        `Serial.print(${code});\n`,
+        'Serial.println(F(" %"));\n',
+      ].join('');
+    }
+    if (tag === 'GAS') {
+      return ['Serial.print(F("Gas level: "));\n', `Serial.println(${code});\n`].join('');
+    }
+    if (tag === 'RAIN') {
+      return ['Serial.print(F("Rain level: "));\n', `Serial.println(${code});\n`].join('');
+    }
+    return ['Serial.print(F("Light level: "));\n', `Serial.println(${code});\n`].join('');
+  }
+  if (t === 'sensor_bmp280_mblock') {
+    const fld = safeFieldValue(vb, 'BMPFIELD', 'TEMP');
+    if (fld === 'PRESS') {
+      return ['Serial.print(F("Pressure: "));\n', `Serial.print(${code}, 1);\n`, 'Serial.println(F(" hPa"));\n'].join('');
+    }
+    return ['Serial.print(F("Temperature: "));\n', `Serial.print(${code}, 1);\n`, 'Serial.println(F(" °C"));\n'].join('');
+  }
+  if (t === 'sensor_digital_mblock' || t === 'input_pir_read') {
+    return [
+      'Serial.print(F("Detection: "));\n',
+      `Serial.println((${code}) ? 1 : 0);\n`,
+    ].join('');
+  }
+  if (t === 'input_ir_read') {
+    return ['Serial.print(F("IR level: "));\n', `Serial.println(${code});\n`].join('');
+  }
+  return null;
 }
 
 /** “repeat forever” / while(true) from core Blockly */
@@ -882,6 +1050,13 @@ long ${generator.FUNCTION_NAME_PLACEHOLDER_}(int trig, int echo) {
     return `Serial.print(${v});\n`;
   };
   gen.forBlock['comm_serial_println'] = (block, g) => {
+    if (isDhtArduinoSerialBridgeMergeFollower(block, board)) {
+      return '';
+    }
+    const mergedDht = tryEmitArduinoDhtSerialBridgePrintln(block, g, board);
+    if (mergedDht) return mergedDht;
+    const labeled = tryArduinoLabeledSensorPrintln(block, g, board);
+    if (labeled) return labeled;
     const v = g.valueToCode(block, 'VAL', Order.NONE) || '0';
     return `Serial.println(${v});\n`;
   };
@@ -1107,6 +1282,17 @@ BluetoothSerial SerialBT;
     }
     return gen.forBlock['sensor_dht_temp'](block, g);
   };
+  gen.forBlock['sensor_bmp280_mblock'] = (block, g) => {
+    void g;
+    const fld = safeFieldValue(block, 'BMPFIELD', 'TEMP');
+    if (fld === 'PRESS') {
+      return [
+        '(0.0f) /* BMP280 pressure (hPa) — add Wire + Adafruit_BMP280 (I2C ~0x76) */',
+        Order.ATOMIC,
+      ];
+    }
+    return ['(0.0f) /* BMP280 temperature °C — add Wire + Adafruit_BMP280 (I2C ~0x76) */', Order.ATOMIC];
+  };
   gen.forBlock['sensor_analog_mblock'] = (block, g) => {
     void g;
     const n = fieldNumberBlock(block, 'APIN', 32, 0, 39);
@@ -1270,63 +1456,186 @@ BluetoothSerial SerialBT;
     return `// Serial ${port}.println("${line}") — init UART first\n`;
   };
 
-  const dabbleComment = (text) => `// Dabble / app module: ${text}\n`;
-  gen.forBlock['dabble_enable_servo'] = () =>
-    dabbleComment('enable servo — use output servo blocks with real GPIO wiring');
-  gen.forBlock['dabble_enable_motor'] = gen.forBlock['mblock_motor_connect'];
+  const dabbleUnoStmt = (msg) =>
+    `// Dabble: STEMpedia DabbleESP32 library is for ESP32 only — ${msg}\n`;
+  const dabbleUnoBool = '(false /* Dabble: ESP32 only */)';
+  const dabbleUnoNum = '(0 /* Dabble: ESP32 only */)';
+
+  gen.forBlock['dabble_enable_servo'] = (block, g) => {
+    void g;
+    if (board !== 'esp32') return dabbleUnoStmt('map servo slot to GPIO in the Dabble Motor module');
+    dabbleEsp32AddModules(gen, [DABBLE_MOD.MOTOR]);
+    const sid = fieldNumberBlock(block, 'SID', 1, 1, 4);
+    const pin = digitalPinLiteral(block, board, 'DPIN', 14);
+    if (sid === 2) return `Controls.runServo2(${pin});\n`;
+    if (sid !== 1) {
+      return `Controls.runServo1(${pin}); // Dabble exposes Servo1–2; slot ${sid} → Servo1\n`;
+    }
+    return `Controls.runServo1(${pin});\n`;
+  };
+  gen.forBlock['dabble_enable_motor'] = (block, g) => {
+    void g;
+    if (board !== 'esp32') return gen.forBlock['mblock_motor_connect'](block, g);
+    dabbleEsp32AddModules(gen, [DABBLE_MOD.MOTOR]);
+    const mid = Number(digitalPinLiteral(block, board, 'MID', 1));
+    const d1 = digitalPinLiteral(block, board, 'D1', 2);
+    const d2 = digitalPinLiteral(block, board, 'D2', 4);
+    const pwm = digitalPinLiteral(block, board, 'PWM', 5);
+    if (mid === 2) return `Controls.runMotor2(${pwm}, ${d1}, ${d2});\n`;
+    return `Controls.runMotor1(${pwm}, ${d1}, ${d2});\n`;
+  };
   gen.forBlock['dabble_tactile_pressed'] = (block, g) => {
     void g;
-    const pin = digitalPinLiteral(block, board, 'SW', 2);
-    return [`(digitalRead(${pin}) == HIGH)`, Order.ATOMIC];
+    if (board !== 'esp32') return [dabbleUnoBool, Order.ATOMIC];
+    dabbleEsp32AddModules(gen, [DABBLE_MOD.INPUTS]);
+    const sw = Math.min(4, Math.max(1, fieldNumberBlock(block, 'SW', 1, 1, 4)));
+    const expr = sw >= 2 ? 'Inputs.getTactileSwitch2Value()' : 'Inputs.getTactileSwitch1Value()';
+    return [`(${expr})`, Order.ATOMIC];
   };
   gen.forBlock['dabble_slide_switch'] = (block, g) => {
     void g;
-    const pin = digitalPinLiteral(block, board, 'SW', 2);
-    const left = safeFieldValue(block, 'POS', 'LEFT') === 'LEFT';
-    return [`(digitalRead(${pin}) == ${left ? 'LOW' : 'HIGH'})`, Order.ATOMIC];
+    if (board !== 'esp32') return [dabbleUnoBool, Order.ATOMIC];
+    dabbleEsp32AddModules(gen, [DABBLE_MOD.INPUTS]);
+    const sw = Math.min(2, Math.max(1, fieldNumberBlock(block, 'SW', 1, 1, 4)));
+    const dir = safeFieldValue(block, 'POS', 'LEFT') === 'LEFT' ? 2 : 3;
+    return [`(Inputs.getSlideSwitchStatus(${sw}, ${dir}))`, Order.ATOMIC];
   };
   gen.forBlock['dabble_pot_value'] = (block, g) => {
     void g;
-    void fieldNumberBlock(block, 'PID', 1, 1, 4);
-    return [`analogRead(A0) /* pot ID field — wire to an analog pin & use read analog */`, Order.ATOMIC];
+    if (board !== 'esp32') return [dabbleUnoNum, Order.ATOMIC];
+    dabbleEsp32AddModules(gen, [DABBLE_MOD.INPUTS]);
+    const pid = Math.min(4, Math.max(1, fieldNumberBlock(block, 'PID', 1, 1, 4)));
+    if (pid === 1) return ['Inputs.getPot1Value()', Order.ATOMIC];
+    if (pid === 2) return ['Inputs.getPot2Value()', Order.ATOMIC];
+    return [`Inputs.getPotValue(${pid})`, Order.ATOMIC];
   };
-  gen.forBlock['dabble_phone_accel'] = () => [
-    '0 /* phone accelerometer — not on device; use IMU block if present */',
-    Order.ATOMIC,
-  ];
+  gen.forBlock['dabble_phone_accel'] = (block, g) => {
+    void g;
+    if (board !== 'esp32') return [dabbleUnoNum, Order.ATOMIC];
+    dabbleEsp32AddModules(gen, [DABBLE_MOD.SENSOR]);
+    const ax = safeFieldValue(block, 'AXIS', 'AX');
+    if (ax === 'AY') return ['Sensor.getAccelerometerYaxis()', Order.ATOMIC];
+    if (ax === 'AZ') return ['Sensor.getAccelerometerZaxis()', Order.ATOMIC];
+    return ['Sensor.getAccelerometerXaxis()', Order.ATOMIC];
+  };
   gen.forBlock['dabble_camera_setup'] = (block, g) => {
     void g;
-    return dabbleComment(
-      `camera flash ${safeFieldValue(block, 'FLASH', 'ON')} quality ${safeFieldValue(block, 'QUAL', 'HIGH')} zoom ${safeFieldValue(block, 'ZOOM', '0')}`,
-    );
+    if (board !== 'esp32') {
+      return dabbleUnoStmt(
+        `Camera.setParameters(REAR, flash, quality, zoom) — ${safeFieldValue(block, 'FLASH', 'ON')} ${safeFieldValue(block, 'QUAL', 'HIGH')}`,
+      );
+    }
+    dabbleEsp32AddModules(gen, [DABBLE_MOD.CAMERA]);
+    const flashOn = safeFieldValue(block, 'FLASH', 'ON') === 'ON';
+    const qual = safeFieldValue(block, 'QUAL', 'HIGH');
+    const qualMacro = qual === 'LOW' ? 'LOW_QUALITY' : 'HIGH_QUALITY';
+    const zoom = fieldNumberBlock(block, 'ZOOM', 0, 0, 100);
+    return `Camera.setParameters(REAR, ${flashOn ? 'ON' : 'OFF'}, ${qualMacro}, ${zoom});\n`;
   };
   gen.forBlock['dabble_camera_rotate'] = (block, g) => {
     void g;
-    return dabbleComment(`rotate camera ${safeFieldValue(block, 'SIDE', 'REAR')}`);
+    if (board !== 'esp32') return dabbleUnoStmt(`Camera.flipTo(FRONT|REAR) — ${safeFieldValue(block, 'SIDE', 'REAR')}`);
+    dabbleEsp32AddModules(gen, [DABBLE_MOD.CAMERA]);
+    const rear = safeFieldValue(block, 'SIDE', 'REAR') === 'REAR';
+    return `Camera.flipTo(${rear ? 'REAR' : 'FRONT'});\n`;
   };
-  gen.forBlock['dabble_camera_capture'] = () => dabbleComment('capture image');
-  gen.forBlock['dabble_color_grid'] = () => dabbleComment('color detector grid setup');
-  gen.forBlock['dabble_color_cell'] = () => ['0 /* color cell */', Order.ATOMIC];
+  gen.forBlock['dabble_camera_capture'] = (block, g) => {
+    void g;
+    if (board !== 'esp32') return dabbleUnoStmt('Camera.captureImage()');
+    dabbleEsp32AddModules(gen, [DABBLE_MOD.CAMERA]);
+    return `Camera.captureImage();\n`;
+  };
+  gen.forBlock['dabble_color_grid'] = (block, g) => {
+    void g;
+    if (board !== 'esp32') return dabbleUnoStmt('ColorDetector.sendSettings(grid, mode, scheme)');
+    dabbleEsp32AddModules(gen, [DABBLE_MOD.COLOR]);
+    const grid = safeFieldValue(block, 'GRID', '1x1');
+    const gridArg = grid === '3x3' ? 2 : 1;
+    const calcArg = safeFieldValue(block, 'CALC', 'DOM') === 'AVG' ? 2 : 1;
+    const schemeArg = safeFieldValue(block, 'SCHEME', 'RGB24') === 'RGB15' ? 2 : 1;
+    return `ColorDetector.sendSettings(${gridArg}, ${calcArg}, ${schemeArg});\n`;
+  };
+  gen.forBlock['dabble_color_cell'] = (block, g) => {
+    void g;
+    if (board !== 'esp32') return [dabbleUnoNum, Order.ATOMIC];
+    dabbleEsp32AddModules(gen, [DABBLE_MOD.COLOR]);
+    const chan = safeFieldValue(block, 'CHAN', 'R');
+    const row0 = Math.min(4, Math.max(0, fieldNumberBlock(block, 'ROW', 1, 1, 16) - 1));
+    const col0 = Math.min(4, Math.max(0, fieldNumberBlock(block, 'COL', 1, 1, 16) - 1));
+    const base =
+      chan === 'G' ? 'getGreenColor' : chan === 'B' ? 'getBlueColor' : 'getRedColor';
+    return [`ColorDetector.${base}(${row0}, ${col0})`, Order.ATOMIC];
+  };
   gen.forBlock['dabble_bt_name'] = (block, g) => {
     void g;
-    return dabbleComment(`BT name ${mblockCStr(safeFieldValue(block, 'NM', ''))}`);
+    if (board !== 'esp32') return dabbleUnoStmt(`Dabble.begin("${mblockCStr(safeFieldValue(block, 'NM', ''))}")`);
+    dabbleEsp32AddModules(gen, [DABBLE_MOD.TERMINAL]);
+    const nm = mblockCStr(safeFieldValue(block, 'NM', 'ESP32BLE'));
+    return `Dabble.begin("${nm}");\n`;
   };
-  gen.forBlock['dabble_refresh'] = () => dabbleComment('refresh Dabble data');
-  gen.forBlock['dabble_led_control'] = () => dabbleComment('enable LED brightness via app');
+  gen.forBlock['dabble_refresh'] = (block, g) => {
+    void g;
+    if (board !== 'esp32') return dabbleUnoStmt('Dabble.processInput()');
+    dabbleEsp32AddModules(gen, [DABBLE_MOD.TERMINAL]);
+    return `Dabble.processInput();\n`;
+  };
+  gen.forBlock['dabble_led_control'] = (block, g) => {
+    void g;
+    if (board !== 'esp32') return dabbleUnoStmt('LedControl module (phone LED / pin UI)');
+    dabbleEsp32AddModules(gen, [DABBLE_MOD.LED]);
+    return `// Dabble LED module: after Dabble.processInput(), read LedControl.readBrightness() / getpinNumber() / getpinState()\n`;
+  };
   gen.forBlock['dabble_terminal_has_data'] = (block, g) => {
     void g;
-    void mblockCStr(safeFieldValue(block, 'TOK', ''));
-    return ['(Serial.available() > 0)', Order.ATOMIC];
+    if (board !== 'esp32') return [dabbleUnoBool, Order.ATOMIC];
+    dabbleEsp32AddModules(gen, [DABBLE_MOD.TERMINAL]);
+    const tok = mblockCStr(safeFieldValue(block, 'TOK', ''));
+    return [`Terminal.compareString(String("${tok}"))`, Order.ATOMIC];
   };
-  gen.forBlock['dabble_terminal_number'] = () => ['Serial.parseFloat()', Order.ATOMIC];
+  gen.forBlock['dabble_terminal_number'] = (block, g) => {
+    void g;
+    if (board !== 'esp32') return [dabbleUnoNum, Order.ATOMIC];
+    dabbleEsp32AddModules(gen, [DABBLE_MOD.TERMINAL]);
+    return ['Terminal.readNumber()', Order.ATOMIC];
+  };
   gen.forBlock['dabble_terminal_send'] = (block, g) => {
     void g;
     const line = mblockCStr(safeFieldValue(block, 'LINE', ''));
-    return `Serial.println("${line}");\n`;
+    if (board !== 'esp32') return `Serial.println("${line}"); // Uno: USB Serial — not Dabble Terminal\n`;
+    dabbleEsp32AddModules(gen, [DABBLE_MOD.TERMINAL]);
+    return `Terminal.println("${line}");\n`;
   };
-  gen.forBlock['dabble_gamepad_pressed'] = () => ['false /* gamepad via Dabble app */', Order.ATOMIC];
-  gen.forBlock['dabble_gamepad_value'] = () => ['0 /* gamepad value */', Order.ATOMIC];
-  gen.forBlock['dabble_pin_monitor'] = () => dabbleComment('pin state monitor (host UI)');
+  gen.forBlock['dabble_gamepad_pressed'] = (block, g) => {
+    void g;
+    if (board !== 'esp32') return [dabbleUnoBool, Order.ATOMIC];
+    dabbleEsp32AddModules(gen, [DABBLE_MOD.GAMEPAD]);
+    const btn = safeFieldValue(block, 'GPAD_BTN', 'UP');
+    const map = {
+      UP: 'GamePad.isUpPressed()',
+      DOWN: 'GamePad.isDownPressed()',
+      LEFT: 'GamePad.isLeftPressed()',
+      RIGHT: 'GamePad.isRightPressed()',
+      A: 'GamePad.isCrossPressed()',
+      B: 'GamePad.isCirclePressed()',
+    };
+    const call = map[btn] || map.UP;
+    return [`(${call})`, Order.ATOMIC];
+  };
+  gen.forBlock['dabble_gamepad_value'] = (block, g) => {
+    void g;
+    if (board !== 'esp32') return [dabbleUnoNum, Order.ATOMIC];
+    dabbleEsp32AddModules(gen, [DABBLE_MOD.GAMEPAD]);
+    const v = safeFieldValue(block, 'GPAD_VAL', 'ANGLE');
+    if (v === 'RADIUS') return ['GamePad.getRadius()', Order.ATOMIC];
+    if (v === 'KEY') return ['GamePad.getXaxisData()', Order.ATOMIC];
+    return ['GamePad.getAngle()', Order.ATOMIC];
+  };
+  gen.forBlock['dabble_pin_monitor'] = (block, g) => {
+    void g;
+    if (board !== 'esp32') return dabbleUnoStmt('PinMonitor.sendDigitalData / sendAnalogData');
+    dabbleEsp32AddModules(gen, [DABBLE_MOD.PINMON]);
+    return `Dabble.processInput();\nPinMonitor.sendDigitalData();\nPinMonitor.sendAnalogData();\n`;
+  };
 }
 
 /**
@@ -1335,7 +1644,7 @@ BluetoothSerial SerialBT;
 export function createArduinoGenerator(board) {
   const gen = new CodeGenerator('Arduino');
   gen.addReservedWords(
-    'setup,loop,HIGH,LOW,INPUT,OUTPUT,INPUT_PULLUP,pinMode,digitalWrite,digitalRead,analogRead,analogWrite,delay,delayMicroseconds,tone,noTone,pulseIn,map,constrain,random,abs,sqrt,log,exp,sin,cos,tan,asin,acos,atan,pow,PI,SERIAL,Serial,String,true,false',
+    'setup,loop,HIGH,LOW,INPUT,OUTPUT,INPUT_PULLUP,pinMode,digitalWrite,digitalRead,analogRead,analogWrite,delay,delayMicroseconds,tone,noTone,pulseIn,map,constrain,random,abs,sqrt,log,exp,sin,cos,tan,asin,acos,atan,pow,PI,SERIAL,Serial,String,true,false,Dabble,GamePad,Terminal,Inputs,Controls,Sensor,Camera,ColorDetector,PinMonitor,LedControl',
   );
   registerStandardAndHardware(gen, board);
   installSafeValueAndStatementWrappers(gen);

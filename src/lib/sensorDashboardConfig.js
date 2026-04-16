@@ -17,17 +17,35 @@ export const SENSOR_UI_BY_TYPE = {
       { key: 'humidity', label: 'Humidity', unit: '%', kind: 'number' },
     ],
   },
-  soil_moisture: {
-    fields: [{ key: 'soilMoisture', label: 'Soil moisture', unit: 'ADC', kind: 'number' }],
+  lm35: {
+    fields: [{ key: 'temperature', label: 'Temperature', unit: '°C', kind: 'number' }],
+  },
+  mq2: {
+    fields: [{ key: 'gasLevel', label: 'Gas level', unit: 'ADC', kind: 'number' }],
+  },
+  pir: {
+    fields: [{ key: 'motionDetected', label: 'Motion', kind: 'boolean' }],
+  },
+  ldr: {
+    fields: [{ key: 'lightLevel', label: 'Light level', unit: 'ADC', kind: 'number' }],
   },
   ultrasonic: {
     fields: [{ key: 'distanceCm', label: 'Distance', unit: 'cm', kind: 'number' }],
   },
+  bmp280: {
+    fields: [
+      { key: 'temperature', label: 'Temperature', unit: '°C', kind: 'number' },
+      { key: 'pressure', label: 'Pressure', unit: 'hPa', kind: 'number' },
+    ],
+  },
+  soil_moisture: {
+    fields: [{ key: 'soilMoisture', label: 'Soil moisture', unit: 'ADC', kind: 'number' }],
+  },
+  rain_sensor: {
+    fields: [{ key: 'rainLevel', label: 'Rain level', unit: 'ADC', kind: 'number' }],
+  },
   ir_sensor: {
     fields: [{ key: 'irDetected', label: 'IR detected', kind: 'boolean' }],
-  },
-  lm35: {
-    fields: [{ key: 'temperature', label: 'Temperature', unit: '°C', kind: 'number' }],
   },
 };
 

@@ -1,4 +1,5 @@
 import { formatSensorValue, getDashboardFieldDefs } from '../../lib/sensorDashboardConfig.js';
+import { friendlySensorTypeLabel, sensorPrimaryLabel, sensorSecondaryLabel } from '../../lib/sensorAddPresets.js';
 
 function formatTime(iso) {
   if (!iso) return '—';
@@ -46,7 +47,9 @@ export default function AggregatedReadingsLogTable({ readings }) {
           </tr>
         </thead>
         <tbody>
-          {readings.map((r, i) => (
+          {readings.map((r, i) => {
+            const dev = { deviceId: r.deviceId, name: r.deviceName, sensorType: r.sensorType };
+            return (
             <tr
               key={`${r.createdAt}-${r.deviceId}-${i}`}
               className="border-b border-studio-border/70 last:border-b-0"
@@ -55,17 +58,20 @@ export default function AggregatedReadingsLogTable({ readings }) {
                 {formatTime(r.createdAt)}
               </td>
               <td className="px-3 py-2">
-                <div className="font-medium text-slate-200">{r.deviceName || r.deviceId}</div>
-                <div className="font-mono text-[10px] text-studio-muted">{r.deviceId}</div>
+                <div className="font-medium text-slate-200">{sensorPrimaryLabel(dev)}</div>
+                <div className="font-mono text-[10px] text-studio-muted">{sensorSecondaryLabel(dev)}</div>
               </td>
-              <td className="whitespace-nowrap px-3 py-2 text-slate-300">{r.sensorType}</td>
+              <td className="whitespace-nowrap px-3 py-2 text-slate-300">
+                {friendlySensorTypeLabel(r.sensorType)}
+              </td>
               <td className="max-w-[280px] px-3 py-2 text-slate-200 sm:max-w-md">
                 <span className="break-words font-mono text-[11px] leading-snug">
                   {formatValuesLine(r.sensorType, r.data)}
                 </span>
               </td>
             </tr>
-          ))}
+            );
+          })}
         </tbody>
       </table>
     </div>

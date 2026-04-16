@@ -1,6 +1,10 @@
 import { Link } from 'react-router-dom';
 import { Check, Loader2, X } from 'lucide-react';
-import { friendlySensorTypeLabel } from '../../lib/sensorAddPresets.js';
+import {
+  formatSensorDeviceDetailTitle,
+  sensorPrimaryLabel,
+  sensorSecondaryLabel,
+} from '../../lib/sensorAddPresets.js';
 import { useKitDeviceSetupProgress } from '../../hooks/useKitDeviceSetupProgress.js';
 import SensorDataPathsHint from '../ui/SensorDataPathsHint.jsx';
 
@@ -14,14 +18,16 @@ import SensorDataPathsHint from '../ui/SensorDataPathsHint.jsx';
  * }} props
  */
 export default function IdeDeviceContextBanner({ deviceId, deviceName, sensorType, onDismiss }) {
-  const label = (deviceName && deviceName.trim()) || deviceId;
-  const typeLine = sensorType ? friendlySensorTypeLabel(sensorType) : null;
+  const dev = { deviceId, name: deviceName, sensorType };
+  const primary = sensorPrimaryLabel(dev);
+  const secondary = sensorSecondaryLabel(dev);
+  const detailTitle = formatSensorDeviceDetailTitle(dev);
 
   const { hasReading, loading, authRequired, error } = useKitDeviceSetupProgress(deviceId, true);
 
   return (
     <div
-      className="shrink-0 border-b border-studio-border/90 bg-[#252a31]/95 px-3 py-2 text-[11px] text-slate-300 backdrop-blur-sm"
+      className="shrink-0 border-b border-studio-border/80 bg-[#22262c]/90 px-3 py-1.5 text-[11px] text-slate-300 backdrop-blur-sm"
       role="region"
       aria-label="Sensor setup hint"
     >
@@ -29,10 +35,10 @@ export default function IdeDeviceContextBanner({ deviceId, deviceName, sensorTyp
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
             <span className="font-semibold text-slate-100">Finish setup in IDE</span>
-            {typeLine ? <span className="text-studio-muted">· {typeLine}</span> : null}
+            <span className="text-studio-muted">· {secondary}</span>
           </div>
 
-          <SensorDataPathsHint variant="banner" className="mt-1.5" />
+          <SensorDataPathsHint variant="banner" className="mt-1" />
 
           <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] leading-tight">
             <span className="inline-flex items-center gap-1 rounded bg-emerald-950/45 px-1.5 py-0.5 font-medium text-emerald-300/95">
@@ -61,8 +67,8 @@ export default function IdeDeviceContextBanner({ deviceId, deviceName, sensorTyp
             )}
           </div>
 
-          <p className="mt-1.5 leading-snug text-slate-400">
-            <strong className="text-slate-200">{label}</strong>
+          <p className="mt-1.5 leading-snug text-slate-400" title={detailTitle}>
+            <strong className="text-slate-200">{primary}</strong>
             {authRequired ? (
               <>
                 {' '}
@@ -91,8 +97,12 @@ export default function IdeDeviceContextBanner({ deviceId, deviceName, sensorTyp
           ) : null}
 
           <p className="mt-1.5 text-[10px] text-slate-500">
-            <Link to={`/devices/${encodeURIComponent(deviceId)}`} className="text-studio-accent hover:underline">
-              ← Sensor details &amp; checklist
+            <Link
+              to={`/devices/${encodeURIComponent(deviceId)}`}
+              className="text-studio-accent hover:underline"
+              title={`Back to this sensor’s page (${deviceId})`}
+            >
+              ← Same sensor · details &amp; checklist
             </Link>
           </p>
         </div>

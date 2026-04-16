@@ -17,7 +17,7 @@ export function fieldDigitalPin(name, value, max = 39) {
   };
 }
 
-/** Uno A0–A5 labels; generator maps to A0… or ESP32 ADC GPIO. */
+/** A0–A5 style labels; generator maps to ESP32 ADC GPIOs. */
 export const FIELD_ANALOG_APIN = {
   type: 'field_dropdown',
   name: 'APIN',

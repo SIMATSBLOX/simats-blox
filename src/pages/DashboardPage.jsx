@@ -9,6 +9,7 @@ import RegisterDeviceForm from '../components/dashboard/RegisterDeviceForm.jsx';
 import SerialBridgeKeyCard from '../components/dashboard/SerialBridgeKeyCard.jsx';
 import Button from '../components/ui/Button.jsx';
 import { useLiveSensorData } from '../hooks/useLiveSensorData.js';
+import { formatSensorDeviceDetailTitle, formatSensorSelectOptionLabel } from '../lib/sensorAddPresets.js';
 import { useReadingsLog } from '../hooks/useReadingsLog.js';
 import { useDashboardSession } from '../hooks/useDashboardSession.js';
 import { buildReadingsLogCsv, downloadCsvFile } from '../lib/readingsLogCsv.js';
@@ -124,7 +125,7 @@ export default function DashboardPage() {
           {isAuthenticated ? <AddSensorTrigger onClick={() => setAddSensorOpen(true)} /> : null}
           <Link
             to="/"
-            className="rounded border border-studio-border bg-studio-panel px-3 py-1.5 text-sm text-slate-200 hover:bg-[#2c323a]"
+            className="rounded-md border border-studio-border/70 px-2.5 py-1.5 text-xs text-studio-muted hover:border-studio-border hover:bg-studio-panel hover:text-slate-200"
           >
             Open IDE
           </Link>
@@ -134,7 +135,7 @@ export default function DashboardPage() {
       <AddSensorModal open={addSensorOpen} onClose={() => setAddSensorOpen(false)} onCreated={() => void refetch()} />
 
       <main className="mx-auto max-w-5xl px-3 py-4 sm:px-4 sm:py-5">
-        <nav className="mb-4 flex flex-wrap gap-0.5 border-b border-studio-border/80" aria-label="Sensor workspace">
+        <nav className="mb-2 flex flex-wrap gap-0.5 border-b border-studio-border/80" aria-label="Sensor workspace">
           {TABS.map(({ id, label }) => {
             const active = tab === id;
             return (
@@ -154,12 +155,19 @@ export default function DashboardPage() {
             );
           })}
         </nav>
+        <p className="mb-4 text-[11px] leading-relaxed text-studio-muted">
+          Add sensors and view live data here.{' '}
+          <Link to="/" className="text-studio-accent hover:text-studio-accentHover hover:underline">
+            Blockly IDE
+          </Link>{' '}
+          is for programming, USB connect, upload, and serial forwarding.
+        </p>
 
         {tab === 'setup' ? (
-          <div className="space-y-4">
-            <p className="text-sm text-studio-muted">
-              Optional tools: connect the Blockly IDE’s serial forwarding, or register a sensor with your own ID (for
-              workshops).
+          <div className="space-y-3">
+            <p className="text-[12px] text-studio-muted">
+              Serial bridge and manual ID — use when you already use the IDE’s{' '}
+              <span className="text-slate-400">Serial Monitor</span> tab.
             </p>
             <SerialBridgeKeyCard devices={devices} />
             <RegisterDeviceForm onRegistered={() => void refetch()} />
@@ -178,18 +186,17 @@ export default function DashboardPage() {
             {showError}
             {loading && !devices.length ? <p className="text-sm text-studio-muted">Loading your sensors…</p> : null}
             {!loading && !error && devices.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-studio-border/70 bg-studio-panel/50 px-4 py-8 text-center sm:px-6">
+              <div className="rounded-lg border border-dashed border-studio-border/60 bg-studio-panel/35 px-4 py-7 text-center sm:px-6">
                 <p className="text-sm font-medium text-slate-200">No sensors yet</p>
                 <p className="mt-2 text-sm text-studio-muted">
-                  Add one to get ready-made ESP32 code and a live dashboard.
+                  {isAuthenticated ? (
+                    <>
+                      Use <span className="text-slate-400">+ Add sensor</span> above for guided setup and sample code.
+                    </>
+                  ) : (
+                    'Sign in to add sensors and copy device keys.'
+                  )}
                 </p>
-                {isAuthenticated ? (
-                  <div className="mt-6 flex justify-center">
-                    <AddSensorTrigger onClick={() => setAddSensorOpen(true)} />
-                  </div>
-                ) : (
-                  <p className="mt-4 text-xs text-studio-muted">Sign in to add sensors.</p>
-                )}
               </div>
             ) : null}
             {devices.length > 0 ? (
@@ -237,8 +244,8 @@ export default function DashboardPage() {
                   >
                     <option value="">All sensors</option>
                     {devices.map((d) => (
-                      <option key={d.deviceId} value={d.deviceId}>
-                        {d.name}
+                      <option key={d.deviceId} value={d.deviceId} title={formatSensorDeviceDetailTitle(d)}>
+                        {formatSensorSelectOptionLabel(d)}
                       </option>
                     ))}
                   </select>

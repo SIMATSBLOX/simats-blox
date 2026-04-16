@@ -1,67 +1,119 @@
 {
   "version": 1,
-  "projectName": "Example: LM35 temperature (raw ADC)",
+  "projectName": "Example: LM35 analog temperature",
   "boardId": "esp32",
-  "description": "LM35 analog out → GPIO34 (ADC1, input-only on many DevKit boards). Serial 115200: labeled raw read every 500 ms. Convert to °C in your lesson (≈ 10 mV/°C for classic LM35 at 3.3 V ref).",
+  "description": "LM35 → GPIO34 (ADC1). One line per loop: \"Temperature: … °C\" for serial bridge / Devices.",
   "blockly": {
     "blocks": {
       "languageVersion": 0,
       "blocks": [
         {
           "type": "esp32_when_starts",
-          "id": "*BZ^[50u|7W7$B`}8fPk",
+          "id": "JGQ*wFTWyn$IDVqDn^j5",
           "x": 20,
           "y": 20,
           "next": {
             "block": {
               "type": "comm_serial_begin",
-              "id": "!*m#tn+1}Dg/_:ej1|a?",
+              "id": "PiQuH;SDmk#B+_6_tXdd",
               "fields": {
                 "BAUD": 115200
               },
               "next": {
                 "block": {
                   "type": "hw_forever",
-                  "id": "[J%T(4gNS3yQo^[7Y=Mw",
+                  "id": ";NJhBxF8L!QO~/g}8T!z",
                   "inputs": {
                     "DO": {
                       "block": {
-                        "type": "comm_serial_print",
-                        "id": "y6u]H`l)qQNq~iB9oCOF",
+                        "type": "comm_serial_println",
+                        "id": "L^6Ll..$zv,t=C!]p|GU",
                         "inputs": {
                           "VAL": {
                             "block": {
-                              "type": "text",
-                              "id": "n1Uy,(?qDsnX#F6zqH=8",
-                              "fields": {
-                                "TEXT": "LM35 raw: "
+                              "type": "text_join",
+                              "id": "-xdQ|Yh$_qGNICI#|XPO",
+                              "extraState": {
+                                "itemCount": 3
+                              },
+                              "inputs": {
+                                "ADD0": {
+                                  "block": {
+                                    "type": "text",
+                                    "id": "}hURqyy*JQcU3|7ek,+k",
+                                    "fields": {
+                                      "TEXT": "Temperature: "
+                                    }
+                                  }
+                                },
+                                "ADD1": {
+                                  "block": {
+                                    "type": "math_arithmetic",
+                                    "id": "jspCsFPO_}0[,GD-JLT=",
+                                    "fields": {
+                                      "OP": "DIVIDE"
+                                    },
+                                    "inputs": {
+                                      "A": {
+                                        "block": {
+                                          "type": "math_arithmetic",
+                                          "id": "z.LkyS4w%)-v2ISI#(j8",
+                                          "fields": {
+                                            "OP": "MULTIPLY"
+                                          },
+                                          "inputs": {
+                                            "A": {
+                                              "block": {
+                                                "type": "esp32_read_analog_pin",
+                                                "id": ",KwZ=;_,w]`Dbl[KgN}s",
+                                                "fields": {
+                                                  "APIN_NUM": 34
+                                                }
+                                              }
+                                            },
+                                            "B": {
+                                              "block": {
+                                                "type": "math_number",
+                                                "id": "S=v;Q5?m,?g+i-(ZY~_6",
+                                                "fields": {
+                                                  "NUM": 330
+                                                }
+                                              }
+                                            }
+                                          }
+                                        }
+                                      },
+                                      "B": {
+                                        "block": {
+                                          "type": "math_number",
+                                          "id": "F;]#7pLQ;!tDoysYO{kD",
+                                          "fields": {
+                                            "NUM": 4095
+                                          }
+                                        }
+                                      }
+                                    }
+                                  }
+                                },
+                                "ADD2": {
+                                  "block": {
+                                    "type": "text",
+                                    "id": "S5N+Za/Y+u!!bHr(5Chy",
+                                    "fields": {
+                                      "TEXT": " °C"
+                                    }
+                                  }
+                                }
                               }
                             }
                           }
                         },
                         "next": {
                           "block": {
-                            "type": "comm_serial_println",
-                            "id": "bWxk.A7@w%md6?*L;-~-",
-                            "inputs": {
-                              "VAL": {
-                                "block": {
-                                  "type": "esp32_read_analog_pin",
-                                  "id": "7}_:hX7b%fo!2koS;G.,",
-                                  "fields": {
-                                    "APIN_NUM": 34
-                                  }
-                                }
-                              }
-                            },
-                            "next": {
-                              "block": {
-                                "type": "hw_wait",
-                                "id": ")(/~4s-bZZ|f^uxI+mev",
-                                "fields": {
-                                  "MS": 500
-                                }
-                              }
+                            "type": "hw_wait",
+                            "id": "kGXEAlbvd]`70hM,K2.!",
+                            "fields": {
+                              "MS": 500
                             }
                           }
                         }

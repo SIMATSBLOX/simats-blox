@@ -1,6 +1,17 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { ChevronDown, LayoutDashboard, Redo2, Save, Settings, Terminal, Undo2, UploadCloud, Usb } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import {
+  Activity,
+  ChevronDown,
+  LayoutDashboard,
+  Redo2,
+  Save,
+  Settings,
+  Terminal,
+  Undo2,
+  UploadCloud,
+  Usb,
+} from 'lucide-react';
 import Button from '../ui/Button.jsx';
 import { BOARD_LABEL, useIdeStore } from '../../store/ideStore.js';
 import * as Blockly from 'blockly';
@@ -48,6 +59,14 @@ import {
 import { uploadMicroPythonMainPy } from '../../lib/micropythonSerialUpload.js';
 import { clearSessionDraft } from '../../lib/sessionRecoveryStore.js';
 import { SERIAL_MSG } from '../../lib/serialUserMessages.js';
+import { useDashboardSession } from '../../hooks/useDashboardSession.js';
+import { useLiveSensorData } from '../../hooks/useLiveSensorData.js';
+import {
+  formatSensorDeviceDetailTitle,
+  formatSensorSelectOptionLabel,
+  sensorPrimaryLabel,
+  sensorSecondaryLabel,
+} from '../../lib/sensorAddPresets.js';
 import {
   examplesMenuBoardBlurb,
   exportCodeMenuItemTitle,
@@ -56,8 +75,6 @@ import {
   openSerialMonitorTitle,
   serialConnectButtonTitle,
   serialConnectedLogLine,
-  unoUploadGuidanceLog,
-  unoUploadGuidanceToast,
   uploadButtonTitle,
 } from '../../lib/boardUiCopy.js';
 
@@ -81,6 +98,14 @@ function formatUpdatedLabel(iso) {
 }
 
 export default function TopToolbar({ workspace, previewCode = '', onAfterProjectImport }) {
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { isAuthenticated, sessionHydrating } = useDashboardSession();
+  const { devices: liveDevices, loading: liveDevicesLoading } = useLiveSensorData();
+  const liveMonitorDetailsRef = useRef(/** @type {HTMLDetailsElement | null} */ (null));
+  /** After "Sign in" from Devices gate, go to /devices once session becomes valid. */
+  const pendingDevicesAfterSignInRef = useRef(false);
+  const [devicesSignInGateOpen, setDevicesSignInGateOpen] = useState(false);
   const fileRef = useRef(null);
   const xmlRef = useRef(null);
   const [exampleEntries, setExampleEntries] = useState(/** @type {ExampleManifestEntry[]} */ ([]));
@@ -106,8 +131,6 @@ export default function TopToolbar({ workspace, previewCode = '', onAfterProject
   const description = useIdeStore((s) => s.description);
   const setDescription = useIdeStore((s) => s.setDescription);
   const resetForNewSketch = useIdeStore((s) => s.resetForNewSketch);
-  const boardId = useIdeStore((s) => s.boardId);
-  const setBoardId = useIdeStore((s) => s.setBoardId);
   const browserProjectId = useIdeStore((s) => s.browserProjectId);
   const setBrowserProjectId = useIdeStore((s) => s.setBrowserProjectId);
   const cloudProjectId = useIdeStore((s) => s.cloudProjectId);
@@ -174,10 +197,7 @@ export default function TopToolbar({ workspace, previewCode = '', onAfterProject
   const examplesRoot = `${baseUrl}examples/`;
   const brandLogoUrl = `${baseUrl}simats-blox-logo.png`;
 
-  const examplesForBoard = useMemo(
-    () => exampleEntries.filter((ex) => ex.boardId === boardId),
-    [exampleEntries, boardId],
-  );
+  const examplesForBoard = useMemo(() => exampleEntries.filter((ex) => ex.boardId === 'esp32'), [exampleEntries]);
 
   useEffect(() => {
     let cancelled = false;
@@ -197,17 +217,53 @@ export default function TopToolbar({ workspace, previewCode = '', onAfterProject
   }, [examplesRoot]);
 
   useEffect(() => {
-    if (!openPickerOpen && !saveAsOpen && !settingsOpen) return;
+    if (!openPickerOpen && !saveAsOpen && !settingsOpen && !devicesSignInGateOpen) return;
     const fn = (e) => {
       if (e.key === 'Escape') {
         setOpenPickerOpen(false);
         setSaveAsOpen(false);
         setSettingsOpen(false);
+        setDevicesSignInGateOpen(false);
+        const lm = liveMonitorDetailsRef.current;
+        if (lm?.open) lm.open = false;
       }
     };
     window.addEventListener('keydown', fn);
     return () => window.removeEventListener('keydown', fn);
-  }, [openPickerOpen, saveAsOpen, settingsOpen]);
+  }, [openPickerOpen, saveAsOpen, settingsOpen, devicesSignInGateOpen]);
+
+  useEffect(() => {
+    if (!isAuthenticated || !pendingDevicesAfterSignInRef.current) return;
+    pendingDevicesAfterSignInRef.current = false;
+    setDevicesSignInGateOpen(false);
+    navigate('/devices');
+  }, [isAuthenticated, navigate]);
+
+  useEffect(() => {
+    if (settingsOpen) return;
+    if (!isAuthenticated) pendingDevicesAfterSignInRef.current = false;
+  }, [settingsOpen, isAuthenticated]);
+
+  const devicesNavAllowed = isAuthenticated || sessionHydrating;
+
+  const sortedLiveDevices = useMemo(() => {
+    return [...liveDevices].sort((a, b) =>
+      formatSensorSelectOptionLabel(a).localeCompare(formatSensorSelectOptionLabel(b)),
+    );
+  }, [liveDevices]);
+
+  const pickLiveMonitorDevice = useCallback(
+    (d) => {
+      const next = new URLSearchParams(searchParams);
+      next.set('monitor', d.deviceId);
+      if (d.sensorType) next.set('mt', String(d.sensorType));
+      else next.delete('mt');
+      setSearchParams(next, { replace: true });
+      const el = liveMonitorDetailsRef.current;
+      if (el) el.open = false;
+    },
+    [searchParams, setSearchParams],
+  );
 
   useEffect(() => {
     if (!openPickerOpen) {
@@ -391,7 +447,7 @@ export default function TopToolbar({ workspace, previewCode = '', onAfterProject
       setBrowserProjectId(id);
       appendLog(
         'info',
-        `Saved to local browser — "${payload.projectName}" (${BOARD_LABEL[payload.boardId] ?? payload.boardId}). Same device only.`,
+        `Saved to local browser — "${payload.projectName}" (${BOARD_LABEL.esp32}). Same device only.`,
       );
       toast('success', 'Saved to this browser.');
     } catch (e) {
@@ -427,7 +483,7 @@ export default function TopToolbar({ workspace, previewCode = '', onAfterProject
         setBrowserProjectId(null);
         appendLog(
           'info',
-          `Saved to Supabase cloud — "${payload.projectName}" (${BOARD_LABEL[payload.boardId] ?? payload.boardId}).`,
+          `Saved to Supabase cloud — "${payload.projectName}" (${BOARD_LABEL.esp32}).`,
         );
         toast('success', 'Saved to cloud.');
       } catch (e) {
@@ -449,7 +505,7 @@ export default function TopToolbar({ workspace, previewCode = '', onAfterProject
         await updateExpressCloudProject(slotId, payload);
         appendLog(
           'info',
-          `Saved to local API — "${payload.projectName}" (${BOARD_LABEL[payload.boardId] ?? payload.boardId}).`,
+          `Saved to local API — "${payload.projectName}" (${BOARD_LABEL.esp32}).`,
         );
         toast('success', 'Saved to local API.');
       } else {
@@ -458,7 +514,7 @@ export default function TopToolbar({ workspace, previewCode = '', onAfterProject
         setBrowserProjectId(null);
         appendLog(
           'info',
-          `Saved to local API — "${payload.projectName}" (${BOARD_LABEL[payload.boardId] ?? payload.boardId}).`,
+          `Saved to local API — "${payload.projectName}" (${BOARD_LABEL.esp32}).`,
         );
         toast('success', 'Saved to local API.');
       }
@@ -554,7 +610,7 @@ export default function TopToolbar({ workspace, previewCode = '', onAfterProject
     downloadJson(payload, fn);
     appendLog(
       'info',
-      `Exported project file ${fn} to your device (board: ${BOARD_LABEL[payload.boardId] ?? payload.boardId}).`,
+      `Exported project file ${fn} to your device (board: ${BOARD_LABEL.esp32}).`,
     );
     toast('success', 'Project file exported.');
   };
@@ -602,17 +658,14 @@ export default function TopToolbar({ workspace, previewCode = '', onAfterProject
   };
 
   const handleExportCode = () => {
-    const ext = boardId === 'esp32' ? '.py' : '.ino';
+    const ext = '.py';
     const base = slugifyProjectBasename(projectName);
     const fn = `${base}${ext}`;
     const body = previewCode ?? '';
-    const mime = boardId === 'esp32' ? 'text/x-python;charset=utf-8' : 'text/plain;charset=utf-8';
+    const mime = 'text/x-python;charset=utf-8';
     downloadTextFile(body, fn, mime);
-    appendLog(
-      'info',
-      `Exported ${boardId === 'esp32' ? 'MicroPython' : 'Arduino sketch'} ${fn} (${BOARD_LABEL[boardId] ?? boardId}).`,
-    );
-    toast('success', exportCodeSuccessToast(boardId));
+    appendLog('info', `Exported MicroPython ${fn} (${BOARD_LABEL.esp32}).`);
+    toast('success', exportCodeSuccessToast());
   };
 
   const handleExportXml = () => {
@@ -799,7 +852,7 @@ export default function TopToolbar({ workspace, previewCode = '', onAfterProject
               <p className="mt-0.5 text-[10px] text-slate-500">
                 <span className={accent}>{cloudKind}</span>
                 <span className="text-slate-600"> · </span>
-                <span>{BOARD_LABEL[p.boardId] ?? p.boardId}</span>
+                <span>{BOARD_LABEL[p.boardId] ?? BOARD_LABEL.esp32}</span>
                 <span className="text-slate-600"> · </span>
                 <span>Updated {formatUpdatedLabel(p.updatedAt)}</span>
               </p>
@@ -834,9 +887,9 @@ export default function TopToolbar({ workspace, previewCode = '', onAfterProject
 
   return (
     <>
-      <header className="flex min-h-11 shrink-0 items-center gap-0 border-b border-studio-border/90 bg-[#1e2228] px-2 py-0.5 sm:px-3">
+      <header className="z-10 flex min-h-11 min-w-0 max-w-full shrink-0 items-center gap-0 border-b border-studio-border/90 bg-[#1e2228] px-2 py-0.5 sm:px-3">
         <div
-          className="flex shrink-0 items-center gap-2 border-r border-studio-border/80 pr-2 sm:gap-2.5 sm:pr-3"
+          className="flex shrink-0 items-center gap-1.5 border-r border-studio-border/80 pr-1.5 sm:gap-2 sm:pr-2 xl:pr-3"
           title="SIMATS BLOX — hardware block workspace"
         >
           <div
@@ -853,12 +906,12 @@ export default function TopToolbar({ workspace, previewCode = '', onAfterProject
               className="h-7 w-7 object-contain object-center drop-shadow-[0_1px_2px_rgba(0,0,0,0.55)]"
             />
           </div>
-          <span className="min-w-0 truncate text-[11px] font-semibold leading-none tracking-tight text-slate-100 sm:text-sm">
+          <span className="hidden min-w-0 max-w-[9rem] truncate text-[11px] font-semibold leading-none tracking-tight text-slate-100 xl:inline-block sm:text-sm">
             SIMATS BLOX
           </span>
         </div>
 
-        <nav className="flex shrink-0 items-center gap-0 border-r border-studio-border/80 px-1.5 text-xs sm:px-2.5 sm:text-[11px]">
+        <nav className="flex shrink-0 items-center gap-0 border-r border-studio-border/80 px-1 text-xs sm:px-1.5 sm:text-[11px] xl:px-2.5">
           <ToolbarMenu label="File">
             <button
               type="button"
@@ -937,9 +990,9 @@ export default function TopToolbar({ workspace, previewCode = '', onAfterProject
               type="button"
               className="menu-item"
               onClick={handleExportCode}
-              title={exportCodeMenuItemTitle(boardId)}
+              title={exportCodeMenuItemTitle()}
             >
-              Export Code{boardId === 'esp32' ? ' (.py)' : ' (.ino)'}
+              Export Code (.py)
             </button>
             <div className="my-1 h-px bg-studio-border/60" role="separator" />
             <button type="button" className="menu-item" onClick={() => fileRef.current?.click()}>
@@ -974,15 +1027,12 @@ export default function TopToolbar({ workspace, previewCode = '', onAfterProject
             </button>
           </ToolbarMenu>
           {exampleEntries.length > 0 ? (
-            <ToolbarMenu
-              label="Examples"
-              buttonTitle={`Starter projects for ${BOARD_LABEL[boardId]} — change the board selector for the other target.`}
-            >
+            <ToolbarMenu label="Examples" buttonTitle="Starter MicroPython examples for ESP32">
               <div className="border-b border-studio-border/50 px-3 py-1.5">
                 <div className="text-[10px] font-medium uppercase tracking-wide text-slate-500">
-                  {BOARD_LABEL[boardId]}
+                  {BOARD_LABEL.esp32}
                 </div>
-                <p className="mt-0.5 text-[9px] leading-snug text-studio-muted">{examplesMenuBoardBlurb(boardId)}</p>
+                <p className="mt-0.5 text-[9px] leading-snug text-studio-muted">{examplesMenuBoardBlurb()}</p>
               </div>
               {examplesForBoard.length > 0 ? (
                 examplesForBoard.map((ex) => (
@@ -990,7 +1040,7 @@ export default function TopToolbar({ workspace, previewCode = '', onAfterProject
                     key={ex.file}
                     type="button"
                     className="menu-item"
-                    title={`Load “${ex.label}” (${BOARD_LABEL[ex.boardId] ?? ex.boardId})`}
+                    title={`Load “${ex.label}” (${BOARD_LABEL.esp32})`}
                     onClick={() => void loadExampleFile(ex.file)}
                   >
                     {ex.label}
@@ -1032,28 +1082,25 @@ export default function TopToolbar({ workspace, previewCode = '', onAfterProject
         />
 
         <div
-          className="flex shrink-0 items-center border-r border-studio-border/80 px-2 sm:px-3"
-          title="Target board — Arduino Uno (C++ / Arduino IDE) or ESP32 (MicroPython)"
+          className="flex shrink-0 items-center border-r border-studio-border/80 px-1.5 sm:px-2 xl:px-3"
+          title="Hardware target: ESP32 (MicroPython)"
         >
-          <div className="relative">
-            <select
-              value={boardId}
-              onChange={(e) => setBoardId(e.target.value)}
-              className="appearance-none rounded-md border border-studio-border/90 bg-[#181b20] py-1 pl-2 pr-7 text-[11px] text-slate-100 sm:text-xs"
-              aria-label="Target board"
-            >
-              <option value="arduino_uno">{BOARD_LABEL.arduino_uno}</option>
-              <option value="esp32">{BOARD_LABEL.esp32}</option>
-            </select>
-            <ChevronDown className="pointer-events-none absolute right-1.5 top-1/2 h-3 w-3 -translate-y-1/2 text-slate-500" />
-          </div>
+          <span
+            className="inline-flex items-center rounded-md border border-studio-border/90 bg-[#181b20] px-2 py-1 text-[11px] text-slate-100 sm:text-xs"
+            aria-label="Hardware target"
+          >
+            {BOARD_LABEL.esp32}
+          </span>
         </div>
 
-        <div className="flex shrink-0 items-center gap-1 border-r border-studio-border/80 px-2 sm:gap-1.5 sm:px-3">
+        <div
+          className="flex shrink-0 flex-wrap items-center gap-0.5 rounded-md border border-studio-accent/25 bg-studio-accent/[0.07] px-1 py-0.5 sm:gap-1 sm:px-1.5 xl:gap-1.5 xl:px-2"
+          title="Hardware: Connect USB → Upload (MicroPython) → Serial Monitor. Devices: your sensor list & live views."
+        >
           <Button
             variant="default"
             className="!px-2 !py-1 !text-[11px]"
-            title={serialConnectButtonTitle(boardId, {
+            title={serialConnectButtonTitle({
               connectState,
               serialBaudRate,
               webSerialOk: getWebSerialAvailability().ok,
@@ -1107,7 +1154,7 @@ export default function TopToolbar({ workspace, previewCode = '', onAfterProject
                     },
                   );
                   st.setConnectState('connected');
-                  appendLog('info', serialConnectedLogLine(boardId, baud));
+                  appendLog('info', serialConnectedLogLine(baud));
                   toast('success', 'Connected — serial session open.');
                   focusSerialMonitorTab();
                 } catch (e) {
@@ -1129,8 +1176,8 @@ export default function TopToolbar({ workspace, previewCode = '', onAfterProject
           <Button
             variant="primary"
             className="!px-2 !py-1 !text-[11px]"
-            title={uploadButtonTitle(boardId, connectState, serialPipelineBusy, uploadProgressModal !== null)}
-            aria-label={boardId === 'esp32' ? 'Upload MicroPython to main.py' : 'Upload (Arduino Uno — use Arduino IDE)'}
+            title={uploadButtonTitle(connectState, serialPipelineBusy, uploadProgressModal !== null)}
+            aria-label="Upload MicroPython to main.py"
             disabled={
               serialPipelineBusy || connectState === 'connecting' || uploadProgressModal !== null
             }
@@ -1138,12 +1185,6 @@ export default function TopToolbar({ workspace, previewCode = '', onAfterProject
               void (async () => {
                 const st = useIdeStore.getState();
                 if (st.serialPipelineBusy || st.connectState === 'connecting') return;
-
-                if (st.boardId !== 'esp32') {
-                  appendLog('info', unoUploadGuidanceLog());
-                  toast('info', unoUploadGuidanceToast());
-                  return;
-                }
 
                 if (st.connectState !== 'connected') {
                   toast('error', SERIAL_MSG.notConnected);
@@ -1168,26 +1209,96 @@ export default function TopToolbar({ workspace, previewCode = '', onAfterProject
               {uploadProgressModal?.runState === 'running' || uploadUiActive ? 'Uploading…' : 'Upload'}
             </span>
           </Button>
+          <span className="hidden h-4 w-px shrink-0 bg-studio-accent/20 sm:block" aria-hidden />
+          {devicesNavAllowed ? (
+            <>
+              <Link
+                to="/devices"
+                className="inline-flex items-center gap-1 rounded-md border border-studio-accent/35 bg-studio-accent/12 px-1.5 py-1 text-[11px] font-medium text-studio-accent hover:border-studio-accent/55 hover:bg-studio-accent/20"
+                title="Live sensors & device list"
+              >
+                <LayoutDashboard className="h-3.5 w-3.5 shrink-0 opacity-90" aria-hidden />
+                <span className="hidden min-[420px]:inline">Devices</span>
+              </Link>
+              <details
+                ref={liveMonitorDetailsRef}
+                className="relative shrink-0 [&_summary::-webkit-details-marker]:hidden"
+              >
+                <summary
+                  className="inline-flex list-none cursor-pointer items-center gap-0.5 rounded-md border border-studio-border/60 bg-[#14171b]/80 px-1.5 py-1 text-[11px] font-medium text-slate-300 hover:border-studio-border hover:bg-[#181b20] hover:text-slate-100"
+                  title="Open live sensor panel in the IDE"
+                >
+                  <Activity className="h-3.5 w-3.5 shrink-0 opacity-90" aria-hidden />
+                  <span className="hidden min-[480px]:inline">Live</span>
+                  <ChevronDown className="h-3 w-3 shrink-0 opacity-60" aria-hidden />
+                </summary>
+                <div className="absolute right-0 top-[calc(100%+6px)] z-[90] max-h-64 w-[min(18rem,calc(100vw-1.5rem))] overflow-y-auto rounded-md border border-studio-border/80 bg-[#1a1d22] py-1 shadow-lg">
+                  {!isAuthenticated ? (
+                    <p className="px-2.5 py-2 text-[10px] leading-snug text-studio-muted">
+                      Sign in under Settings → Account to monitor sensors from the IDE.
+                    </p>
+                  ) : liveDevicesLoading ? (
+                    <p className="px-2.5 py-2 text-[10px] text-studio-muted">Loading sensors…</p>
+                  ) : sortedLiveDevices.length === 0 ? (
+                    <p className="px-2.5 py-2 text-[10px] text-studio-muted">No devices yet. Register one from Devices.</p>
+                  ) : (
+                    <ul className="py-0.5">
+                      {sortedLiveDevices.map((d) => (
+                        <li key={d.deviceId}>
+                          <button
+                            type="button"
+                            className="w-full px-2.5 py-1.5 text-left text-[10px] text-slate-200 hover:bg-white/5"
+                            title={formatSensorDeviceDetailTitle(d)}
+                            onClick={() => pickLiveMonitorDevice(d)}
+                          >
+                            <span className="block truncate font-medium">{sensorPrimaryLabel(d)}</span>
+                            <span className="block truncate font-mono text-[9px] text-studio-muted">
+                              {sensorSecondaryLabel(d)}
+                            </span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </details>
+            </>
+          ) : (
+            <button
+              type="button"
+              className="inline-flex cursor-pointer items-center gap-1 rounded-md border border-studio-accent/35 bg-studio-accent/12 px-1.5 py-1 text-[11px] font-medium text-studio-accent hover:border-studio-accent/55 hover:bg-studio-accent/20"
+              title="Sign in to open Devices"
+              aria-label="Devices — sign in required"
+              onClick={() => setDevicesSignInGateOpen(true)}
+            >
+              <LayoutDashboard className="h-3.5 w-3.5 shrink-0 opacity-90" aria-hidden />
+              <span className="hidden min-[420px]:inline">Devices</span>
+            </button>
+          )}
         </div>
 
-        <div className="flex min-w-0 flex-1 items-center gap-2 px-2 sm:gap-2.5 sm:px-3">
-          <div className="flex min-w-0 flex-1 flex-col gap-1 sm:flex-row sm:items-center sm:gap-2">
+        <div className="flex min-w-0 min-h-0 flex-1 items-center gap-2 px-1 sm:gap-2 sm:px-2 xl:gap-3 xl:px-3">
+          {/*
+            Title and Notes are stacked vertically so the Notes label never shares a row with Save/Export
+            (wide titles + shrink-0 Notes used to overflow and overlap the action buttons at xl).
+          */}
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col justify-center gap-1 py-0.5">
             <input
               value={projectName}
               onChange={(e) => setProjectName(e.target.value)}
-              className="min-w-0 w-full flex-1 rounded-md border border-studio-border/90 bg-[#181b20] px-2 py-1 text-[11px] text-slate-100 placeholder:text-slate-600 focus:border-studio-accent/50 focus:outline-none focus:ring-1 focus:ring-studio-accent/25 sm:min-w-[8rem] sm:text-xs lg:min-w-[10rem]"
+              className="w-full min-w-0 rounded-md border border-studio-border/90 bg-[#181b20] px-2 py-1 text-[11px] text-slate-100 placeholder:text-slate-600 focus:border-studio-accent/50 focus:outline-none focus:ring-1 focus:ring-studio-accent/25 sm:text-xs"
               placeholder="Project title"
               title="Project title — saved with Save, Save As, and Export Project (.json); leading/trailing spaces are trimmed when saving"
               aria-label="Project title"
             />
-            <details className="min-w-0 w-full sm:w-auto sm:max-w-[20rem] lg:max-w-[22rem]">
-              <summary className="cursor-pointer list-none text-[10px] text-studio-muted hover:text-slate-400 [&::-webkit-details-marker]:hidden">
+            <details className="min-w-0 w-full max-w-full">
+              <summary className="inline-block cursor-pointer list-none rounded px-0.5 text-[10px] text-studio-muted hover:bg-white/5 hover:text-slate-400 [&::-webkit-details-marker]:hidden">
                 Notes (optional)
               </summary>
               <input
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                className="mt-1 min-w-0 w-full rounded-md border border-studio-border/60 bg-[#14171b]/90 px-2 py-1 text-[10px] text-slate-400 placeholder:text-slate-600/80 focus:border-studio-border/50 focus:outline-none focus:ring-1 focus:ring-studio-accent/15 sm:text-[11px]"
+                className="mt-1 min-w-0 w-full max-w-lg rounded-md border border-studio-border/60 bg-[#14171b]/90 px-2 py-1 text-[10px] text-slate-400 placeholder:text-slate-600/80 focus:border-studio-border/50 focus:outline-none focus:ring-1 focus:ring-studio-accent/15 sm:text-[11px]"
                 placeholder="Short notes for this project…"
                 title="Optional notes — stored with the title when you Save or Export Project"
                 aria-label="Project notes"
@@ -1195,10 +1306,10 @@ export default function TopToolbar({ workspace, previewCode = '', onAfterProject
             </details>
           </div>
 
-          <div className="flex shrink-0 items-center gap-0.5 sm:gap-1">
+          <div className="hidden shrink-0 items-center gap-0.5 sm:gap-1 xl:flex">
             <Button
-              variant="default"
-              className="!px-2 !py-1 !text-[11px]"
+              variant="ghost"
+              className="!px-2 !py-1 !text-[11px] text-slate-500 hover:text-slate-200"
               onClick={() => void handleSavePrimary()}
               title={
                 persistTarget === 'supabase'
@@ -1212,13 +1323,12 @@ export default function TopToolbar({ workspace, previewCode = '', onAfterProject
               <span className="hidden sm:inline">Save</span>
             </Button>
             <ToolbarExportMenu
-              boardId={boardId}
               onExportProject={handleExportProject}
               onExportCode={handleExportCode}
               onExportXml={handleExportXml}
             />
             <div
-              className="ml-0.5 flex items-center rounded-md border border-studio-border/60 bg-[#14171b]/80 p-px"
+              className="ml-0.5 flex items-center rounded-md border border-studio-border/50 bg-[#14171b]/60 p-px opacity-95"
               title="Edit → Undo / Redo"
             >
               <button
@@ -1246,27 +1356,11 @@ export default function TopToolbar({ workspace, previewCode = '', onAfterProject
           </div>
         </div>
 
-        <div className="flex shrink-0 items-center gap-0.5 border-l border-studio-border/80 pl-2 sm:gap-1 sm:pl-3">
-          <Link
-            to="/devices"
-            className="inline-flex items-center gap-1.5 rounded-md border border-studio-border/70 bg-[#1a1d22]/95 px-2 py-1 text-[11px] font-medium text-slate-200 shadow-sm hover:border-studio-border hover:bg-[#232830] hover:text-white"
-            title={
-              isDemoSupabaseOnly()
-                ? sbUserId
-                  ? 'Live sensors & device list (Supabase account)'
-                  : 'Devices — sign in under Settings (Supabase) first'
-                : expressSignedIn || sbUserId
-                  ? 'Live sensors & device list (same account on other browsers)'
-                  : 'Devices — sign in under Settings first'
-            }
-          >
-            <LayoutDashboard className="h-3.5 w-3.5 shrink-0 opacity-90" aria-hidden />
-            <span className="hidden min-[420px]:inline">Devices</span>
-          </Link>
+        <div className="flex shrink-0 items-center gap-0.5 border-l border-studio-border/80 pl-1.5 sm:gap-1 sm:pl-2 xl:pl-3">
           <button
             type="button"
             className="rounded p-1.5 text-slate-600 hover:bg-white/5 hover:text-slate-400"
-            title={openSerialMonitorTitle(boardId)}
+            title={openSerialMonitorTitle()}
             aria-label="Open Serial Monitor"
             onClick={() => focusSerialMonitorTab()}
           >
@@ -1407,7 +1501,7 @@ export default function TopToolbar({ workspace, previewCode = '', onAfterProject
                                 <p className="mt-0.5 text-[10px] text-slate-500">
                                   <span className="text-amber-200/75">This device</span>
                                   <span className="text-slate-600"> · </span>
-                                  <span>{BOARD_LABEL[p.boardId] ?? p.boardId}</span>
+                                  <span>{BOARD_LABEL[p.boardId] ?? BOARD_LABEL.esp32}</span>
                                   <span className="text-slate-600"> · </span>
                                   <span>Updated {formatUpdatedLabel(p.updatedAt)}</span>
                                 </p>
@@ -1505,6 +1599,50 @@ export default function TopToolbar({ workspace, previewCode = '', onAfterProject
         </div>
       ) : null}
 
+      {devicesSignInGateOpen ? (
+        <div
+          className="fixed inset-0 z-[205] flex items-center justify-center bg-black/55 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="devices-signin-title"
+          onClick={() => setDevicesSignInGateOpen(false)}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') setDevicesSignInGateOpen(false);
+          }}
+        >
+          <div
+            className="w-full max-w-sm rounded-lg border border-studio-border bg-[#2a2f36] shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="border-b border-studio-border px-4 py-3">
+              <h2 id="devices-signin-title" className="text-sm font-semibold text-slate-100">
+                Sign in to open Devices
+              </h2>
+              <p className="mt-2 text-[11px] leading-relaxed text-studio-muted">
+                Use your cloud account to manage sensors, logs, and dashboard data.
+              </p>
+            </div>
+            <div className="flex justify-end gap-2 border-t border-studio-border px-4 py-3">
+              <Button variant="ghost" className="!text-xs" type="button" onClick={() => setDevicesSignInGateOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                className="!text-xs"
+                type="button"
+                onClick={() => {
+                  pendingDevicesAfterSignInRef.current = true;
+                  setDevicesSignInGateOpen(false);
+                  setSettingsOpen(true);
+                }}
+              >
+                Sign in
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       <Esp32MpyProgressModal
         open={uploadProgressModal !== null}
         title="Upload to ESP32"
@@ -1532,7 +1670,7 @@ function ToolbarMenu({ label, children, buttonTitle }) {
       <button
         type="button"
         title={buttonTitle}
-        className="flex items-center gap-0.5 rounded-md px-2 py-1 text-[11px] font-medium text-slate-400 hover:bg-white/[0.06] hover:text-slate-100 sm:text-xs"
+        className="flex items-center gap-0.5 rounded-md px-2 py-1 text-[11px] font-medium text-slate-500 hover:bg-white/[0.06] hover:text-slate-100 sm:text-xs"
       >
         {label}
         <ChevronDown className="h-3 w-3 opacity-60" />
@@ -1544,14 +1682,13 @@ function ToolbarMenu({ label, children, buttonTitle }) {
   );
 }
 
-function ToolbarExportMenu({ boardId, onExportProject, onExportCode, onExportXml }) {
-  const codeLabel = boardId === 'esp32' ? 'MicroPython (.py)' : 'Arduino sketch (.ino)';
+function ToolbarExportMenu({ onExportProject, onExportCode, onExportXml }) {
   return (
     <div className="group relative inline-block">
       <button
         type="button"
-        className="flex items-center gap-0.5 rounded-md px-2 py-1 text-[11px] font-medium text-slate-400 hover:bg-white/[0.06] hover:text-slate-100 sm:text-xs"
-        title={exportToolbarMenuTitle(boardId)}
+        className="flex items-center gap-0.5 rounded-md px-2 py-1 text-[11px] font-medium text-slate-500 hover:bg-white/[0.06] hover:text-slate-100 sm:text-xs"
+        title={exportToolbarMenuTitle()}
       >
         Export
         <ChevronDown className="h-3 w-3 opacity-60" />
@@ -1565,9 +1702,9 @@ function ToolbarExportMenu({ boardId, onExportProject, onExportCode, onExportXml
             type="button"
             className="menu-item w-full text-left"
             onClick={onExportCode}
-            title={exportCodeMenuItemTitle(boardId)}
+            title={exportCodeMenuItemTitle()}
           >
-            {codeLabel}
+            MicroPython (.py)
           </button>
           <button type="button" className="menu-item w-full text-left" onClick={onExportXml}>
             Workspace XML

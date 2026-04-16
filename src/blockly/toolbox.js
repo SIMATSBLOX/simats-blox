@@ -1,8 +1,8 @@
-/** @typedef {'arduino_uno' | 'esp32'} BoardId */
+/** @typedef {'esp32'} BoardId */
 
 import * as Blockly from 'blockly';
 
-const blockEntry = (type) => ({ kind: 'block', type });
+import { flyoutBlockEntry } from './toolboxFlyoutShadows.js';
 
 /** @param {string} type */
 export function isBlockRegistered(type) {
@@ -22,7 +22,7 @@ function blockList(types) {
     if (!t || seen.has(t)) continue;
     if (isBlockRegistered(t)) {
       seen.add(t);
-      out.push(blockEntry(t));
+      out.push(flyoutBlockEntry(t));
     }
   }
   return out;
@@ -34,7 +34,7 @@ function blockList(types) {
  * @param {string[]} [extraFallbacks]
  * @param {BoardId} [boardId]
  */
-function ensureVisibleBlocks(preferred, minVisible = 2, extraFallbacks = [], boardId = 'arduino_uno') {
+function ensureVisibleBlocks(preferred, minVisible = 2, extraFallbacks = [], boardId = 'esp32') {
   const out = blockList(preferred);
   if (out.length >= minVisible) return out;
   const startHat = boardId === 'esp32' ? 'esp32_when_starts' : 'board_when_starts';
@@ -52,7 +52,7 @@ function ensureVisibleBlocks(preferred, minVisible = 2, extraFallbacks = [], boa
     if (out.length >= minVisible) break;
     if (!t || have.has(t) || !isBlockRegistered(t)) continue;
     have.add(t);
-    out.push(blockEntry(t));
+    out.push(flyoutBlockEntry(t));
   }
   return out;
 }
@@ -87,7 +87,7 @@ function esp32MicroPythonExtras() {
 /** @param {FlyoutSectionSpec[]} sections
  *  @param {BoardId} [_boardId]
  *  @param {{ dropEmpty?: boolean, globalMinBlocks?: number }} [opts] */
-function buildSectionedFlyout(sections, _boardId = 'arduino_uno', opts = {}) {
+function buildSectionedFlyout(sections, _boardId = 'esp32', opts = {}) {
   const { dropEmpty = true } = opts;
   const out = [];
   const skipped = [];
@@ -284,8 +284,8 @@ function flyoutForCategory(categoryId, boardId) {
           fallbacks: ['board_digital_read'],
         },
         {
-          title: 'Temperature & humidity (DHT)',
-          types: ['sensor_dht_mblock', 'sensor_dht_temp', 'sensor_dht_humidity'],
+          title: 'Temperature & humidity (DHT) · BMP280',
+          types: ['sensor_dht_mblock', 'sensor_dht_temp', 'sensor_dht_humidity', 'sensor_bmp280_mblock'],
           minBlocks: 1,
         },
         {
@@ -416,7 +416,7 @@ function flyoutForCategory(categoryId, boardId) {
 
 /** @param {string} categoryId */
 /** @param {BoardId} [boardId] */
-export function getFlyoutContents(categoryId, boardId = 'arduino_uno') {
+export function getFlyoutContents(categoryId, boardId = 'esp32') {
   const n = normalizeCategoryId(categoryId);
   if (n === 'esp32' && boardId !== 'esp32') {
     return getFlyoutContents('control', boardId);
@@ -460,10 +460,9 @@ export const CATEGORY_LIST = [
 ];
 
 /**
- * Category tabs for the selected board (ESP32 tab only when ESP32 target is active).
- * @param {BoardId} boardId
+ * Category tabs (ESP32-only product).
+ * @param {BoardId} [_boardId]
  */
-export function getCategoryListForBoard(boardId) {
-  if (boardId === 'esp32') return CATEGORY_LIST;
-  return CATEGORY_LIST.filter((c) => c.id !== 'esp32');
+export function getCategoryListForBoard(_boardId) {
+  return CATEGORY_LIST;
 }

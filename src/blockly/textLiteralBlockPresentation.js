@@ -27,7 +27,7 @@ export function registerTextLiteralPresentation() {
     {
       type: 'text',
       message0: '%1',
-      args0: [{ type: 'field_input', name: 'TEXT', text: '' }],
+      args0: [{ type: 'field_input', name: 'TEXT', text: 'Hello' }],
       output: 'String',
       style: 'text_blocks',
       helpUrl: '%{BKY_TEXT_TEXT_HELPURL}',

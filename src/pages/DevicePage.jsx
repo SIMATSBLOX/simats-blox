@@ -13,7 +13,12 @@ import RecentReadingsTable from '../components/dashboard/RecentReadingsTable.jsx
 import Button from '../components/ui/Button.jsx';
 import { getDevicePresence } from '../lib/devicePresence.js';
 import { formatSensorValue, getDashboardFieldDefs } from '../lib/sensorDashboardConfig.js';
-import { friendlySensorTypeLabel } from '../lib/sensorAddPresets.js';
+import {
+  formatSensorSelectOptionLabel,
+  friendlySensorTypeLabel,
+  isPlaceholderSensorDisplayName,
+  shortSensorDeviceIdForLabel,
+} from '../lib/sensorAddPresets.js';
 import { supportsDeviceHardwareSample } from '../lib/deviceHardwareSamples.js';
 
 function formatSeen(iso) {
@@ -30,7 +35,11 @@ export default function DevicePage() {
   const { deviceId } = useParams();
   const decodedId = deviceId ? decodeURIComponent(deviceId) : '';
   const { readings, device, loading, error, reload } = useDeviceHistory(decodedId, 120);
-  const regen = useDeviceKeyRegeneration(decodedId, device?.name, () => void reload());
+  const regen = useDeviceKeyRegeneration(
+    decodedId,
+    device ? formatSensorSelectOptionLabel(device) : decodedId,
+    () => void reload(),
+  );
 
   useEffect(() => {
     const ac = new AbortController();
@@ -58,6 +67,12 @@ export default function DevicePage() {
   const showWaitingForFirstReading =
     Boolean(device && sensorType) && !loading && !error && readings.length === 0;
 
+  const pageTitle = useMemo(() => {
+    if (!device) return 'Sensor';
+    if (!isPlaceholderSensorDisplayName(device.name)) return device.name.trim();
+    return sensorType ? friendlySensorTypeLabel(sensorType) : 'Sensor';
+  }, [device, sensorType]);
+
   if (!decodedId) {
     return (
       <div className="p-6 text-sm text-studio-muted">
@@ -80,15 +95,41 @@ export default function DevicePage() {
 
   return (
     <div className="min-h-screen bg-studio-bg text-slate-100">
-      <header className="sticky top-0 z-10 border-b border-studio-border bg-[#22262c]/95 px-4 py-3 backdrop-blur">
+      <header className="sticky top-0 z-10 border-b border-studio-border bg-[#22262c]/95 px-4 py-2.5 backdrop-blur">
         <div className="mx-auto flex max-w-5xl flex-wrap items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             <Link to="/devices" className="text-[11px] text-studio-muted hover:text-slate-300">
               ← My sensors
             </Link>
-            <h1 className="mt-1 text-lg font-semibold">{device?.name ?? 'Sensor'}</h1>
-            <p className="text-xs text-slate-400">
-              {sensorType ? friendlySensorTypeLabel(sensorType) : '—'}
+            <h1 className="mt-0.5 text-base font-semibold text-slate-100">{pageTitle}</h1>
+            <p className="text-[11px] text-slate-500">
+              {device && isPlaceholderSensorDisplayName(device.name) ? (
+                <>
+                  <span className="font-mono text-[10px] text-slate-500">
+                    {shortSensorDeviceIdForLabel(decodedId)}
+                  </span>
+                  {device?.location ? (
+                    <>
+                      {' '}
+                      · <span className="text-slate-600">{device.location}</span>
+                    </>
+                  ) : null}
+                </>
+              ) : (
+                <>
+                  <span>{sensorType ? friendlySensorTypeLabel(sensorType) : '—'}</span>
+                  <span className="text-slate-600"> · </span>
+                  <span className="font-mono text-[10px] text-slate-500">
+                    {shortSensorDeviceIdForLabel(decodedId)}
+                  </span>
+                  {device?.location ? (
+                    <>
+                      {' '}
+                      · <span className="text-slate-600">{device.location}</span>
+                    </>
+                  ) : null}
+                </>
+              )}
             </p>
           </div>
           <div className="flex shrink-0 flex-col items-end gap-2 text-right text-[11px] text-studio-muted">
@@ -96,6 +137,8 @@ export default function DevicePage() {
               <Link
                 to={`/?device=${encodeURIComponent(decodedId)}&kit=1${
                   sensorType ? `&type=${encodeURIComponent(sensorType)}` : ''
+                }&monitor=${encodeURIComponent(decodedId)}${
+                  sensorType ? `&mt=${encodeURIComponent(sensorType)}` : ''
                 }`}
                 state={{
                   ideDeviceContext: {
@@ -103,6 +146,7 @@ export default function DevicePage() {
                     sensorType,
                   },
                 }}
+                title={`Continue this sensor in the Blockly IDE (${decodedId})`}
                 className="inline-flex items-center gap-1.5 rounded-lg border border-studio-accent/55 bg-studio-accent/15 px-3 py-1.5 text-xs font-medium text-studio-accent hover:bg-studio-accent/25"
               >
                 <Laptop className="h-3.5 w-3.5 shrink-0" aria-hidden />
@@ -119,9 +163,9 @@ export default function DevicePage() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-5xl px-4 py-6">
+      <main className="mx-auto max-w-5xl px-4 py-4">
         {regen.newKey ? (
-          <div className="mb-6 rounded border border-amber-900/45 bg-amber-950/25 px-3 py-2 text-[11px] text-amber-100">
+          <div className="mb-4 rounded-md border border-amber-900/40 bg-amber-950/20 px-2.5 py-2 text-[11px] text-amber-100">
             <div className="font-medium text-amber-200">New device key — copy once</div>
             <div className="mt-1.5 break-all font-mono text-[10px] text-slate-200">{regen.newKey}</div>
             <div className="mt-2 flex flex-wrap gap-2">
@@ -156,10 +200,7 @@ export default function DevicePage() {
 
             {showWaitingForFirstReading ? (
               supportsDeviceHardwareSample(sensorType) ? (
-                <div
-                  id="kit-device-sample"
-                  className="mb-6 rounded-lg border border-studio-border/50 bg-[#14171b]/50 p-2 sm:p-3"
-                >
+                <div id="kit-device-sample" className="mb-4">
                   <DeviceHardwareSampleCode
                     device={device}
                     pendingApiKey={regen.newKey}
@@ -168,18 +209,20 @@ export default function DevicePage() {
                   />
                 </div>
               ) : (
-                <p className="mb-6 rounded-lg border border-studio-border/40 bg-[#1a1f24] px-3 py-3 text-[11px] leading-snug text-slate-400">
-                  Ready-made sample code isn’t available for this sensor type yet. Open the{' '}
+                <p className="mb-4 rounded border border-studio-border/40 bg-[#1a1f24]/80 px-2.5 py-2 text-[10px] leading-snug text-slate-500">
+                  No built-in sample for this type — use the{' '}
                   <Link to="/" className="text-studio-accent hover:underline">
-                    Blockly IDE
+                    IDE
                   </Link>{' '}
-                  to build your program, or paste your own firmware that sends readings to your account.
+                  or your own firmware with the same POST shape.
                 </p>
               )
             ) : (
               <>
-                <section className="mb-6">
-                  <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-studio-muted">Live values</h2>
+                <section className="mb-5">
+                  <h2 className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-studio-muted">
+                    Live values
+                  </h2>
                   <div className="grid gap-2 sm:grid-cols-2">
                     {fields.map((f) => (
                       <LiveStatCard
@@ -193,7 +236,7 @@ export default function DevicePage() {
                 </section>
 
                 {device && supportsDeviceHardwareSample(sensorType) ? (
-                  <div id="kit-device-sample" className="mb-6">
+                  <div id="kit-device-sample" className="mb-4">
                     <DeviceHardwareSampleCode
                       device={device}
                       pendingApiKey={regen.newKey}
@@ -203,19 +246,21 @@ export default function DevicePage() {
                   </div>
                 ) : null}
 
-                <section className="mb-6">
-                  <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-studio-muted">History</h2>
+                <section className="mb-5">
+                  <h2 className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-studio-muted">
+                    History
+                  </h2>
                   <SensorChart readings={readings} sensorType={sensorType} />
                 </section>
 
-                <section className="mb-6">
-                  <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-studio-muted">
+                <section className="mb-5">
+                  <h2 className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-studio-muted">
                     Recent readings
                   </h2>
                   <RecentReadingsTable
                     readings={readings}
                     sensorType={sensorType}
-                    deviceLabel={device?.name ?? decodedId}
+                    deviceLabel={pageTitle}
                   />
                 </section>
               </>

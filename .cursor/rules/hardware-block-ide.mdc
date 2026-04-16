@@ -10,7 +10,7 @@ This is a **web IDE** for **hardware block programming**. It is **not** a stage/
 ## Product direction
 
 - Web IDE only; **upload mode** framing (real upload may stay placeholder until complete).
-- Board targets: **Arduino Uno** and **ESP32**.
+- Board target: **ESP32** (MicroPython in the IDE).
 - **Blockly** editor, **code preview**, **save/load**, **example projects** (when built); **publish** only after full completion.
 - **mBlock-style hardware IDE** look and feel (toolbox categories, hardware blocks, generators).
 

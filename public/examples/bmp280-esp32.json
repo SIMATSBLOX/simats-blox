@@ -1,40 +1,40 @@
 {
   "version": 1,
-  "projectName": "Example: Serial / print (basic)",
+  "projectName": "Example: BMP280 temperature (I2C)",
   "boardId": "esp32",
-  "description": "MicroPython preview uses print() in the loop. Thonny/REPL or serial at 115200 baud. The serial-begin block is a teaching marker in preview.",
+  "description": "BMP280 on I²C (~0x76). Preview prints 0.0 °C until you add a bmp280 driver in MicroPython.",
   "blockly": {
     "blocks": {
       "languageVersion": 0,
       "blocks": [
         {
           "type": "esp32_when_starts",
-          "id": "AHj[RjQ`|Gm=F|mF7%FX",
+          "id": "68t+UjwVle(:p95;wLJ;",
           "x": 20,
           "y": 20,
           "next": {
             "block": {
               "type": "comm_serial_begin",
-              "id": "oBq`yVFs~8y4/JY^UsLN",
+              "id": ")81E6@mx]Pr}%iV+p^73",
               "fields": {
                 "BAUD": 115200
               },
               "next": {
                 "block": {
                   "type": "hw_forever",
-                  "id": "Fa2:Irfz}Z_qf_BgolK.",
+                  "id": "A1x=.O}*vdW6)%ado`jP",
                   "inputs": {
                     "DO": {
                       "block": {
                         "type": "comm_serial_println",
-                        "id": "nX1U}n1:RS-O%yRv:TW$",
+                        "id": "otTrCl=i;:OMN=S2ArLP",
                         "inputs": {
                           "VAL": {
                             "block": {
-                              "type": "text",
-                              "id": "uIEECC$:+%aF%.Sp~4:D",
+                              "type": "sensor_bmp280_mblock",
+                              "id": "(T4q/|92mbT]1W^UNS_E",
                               "fields": {
-                                "TEXT": "Hello from ESP32"
+                                "BMPFIELD": "TEMP"
                               }
                             }
                           }
@@ -42,9 +42,9 @@
                         "next": {
                           "block": {
                             "type": "hw_wait",
-                            "id": "26/v9nVyS|,$2s{Vb`E(",
+                            "id": "qZPLlXbhdmM@g0G9o|g-",
                             "fields": {
-                              "MS": 1000
+                              "MS": 2000
                             }
                           }
                         }

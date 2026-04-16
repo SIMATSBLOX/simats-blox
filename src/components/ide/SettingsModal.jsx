@@ -34,11 +34,25 @@ function Panel({ children, className = '' }) {
 }
 
 /**
+ * @param {{ summary: string, children: import('react').ReactNode }} props
+ */
+function SecondaryDetails({ summary, children }) {
+  return (
+    <details className="rounded-md border border-studio-border/45 bg-[#1f242b]/90">
+      <summary className="cursor-pointer px-2.5 py-1.5 text-[10px] font-medium uppercase tracking-wide text-slate-500">
+        {summary}
+      </summary>
+      <div className="space-y-2 border-t border-studio-border/40 px-2.5 py-2 text-[10px] leading-relaxed text-studio-muted">
+        {children}
+      </div>
+    </details>
+  );
+}
+
+/**
  * @param {{ open: boolean, onClose: () => void }} props
  */
 export default function SettingsModal({ open, onClose }) {
-  const boardId = useIdeStore((s) => s.boardId);
-  const setBoardId = useIdeStore((s) => s.setBoardId);
   const setCloudProjectId = useIdeStore((s) => s.setCloudProjectId);
   const persistTarget = useIdeStore((s) => s.persistTarget);
 
@@ -169,10 +183,10 @@ export default function SettingsModal({ open, onClose }) {
 
   const activeSaveLabel =
     persistTarget === 'supabase'
-      ? 'Supabase cloud'
+      ? 'Cloud account'
       : persistTarget === 'express_api'
-        ? 'Local API (SQLite)'
-        : 'This browser only (localStorage)';
+        ? 'Local dev server'
+        : 'This browser only';
 
   const inputCls =
     'w-full rounded border border-studio-border bg-[#1b1f24] px-2 py-1.5 text-xs text-slate-100 focus:border-studio-accent/60 focus:outline-none focus:ring-1 focus:ring-studio-accent/30';
@@ -192,58 +206,60 @@ export default function SettingsModal({ open, onClose }) {
         className="flex max-h-[min(36rem,92vh)] w-full max-w-lg flex-col overflow-hidden rounded-lg border border-studio-border bg-[#2a2f36] shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="shrink-0 border-b border-studio-border px-4 py-3">
+        <div className="shrink-0 border-b border-studio-border px-4 py-2.5">
           <h2 id="settings-title" className="text-base font-semibold tracking-tight text-slate-100">
             Settings
           </h2>
-          <p className="mt-1 text-[11px] leading-relaxed text-studio-muted">
-            SIMATS BLOX — accounts, where projects are stored, and a few editor preferences.
+          <p className="mt-0.5 text-[10px] text-studio-muted">
+            Cloud account, where saves go, and IDE defaults.
           </p>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
-          <div className="space-y-6">
-            {/* Account */}
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+          <div className="space-y-4">
+            {/* Cloud account */}
             <section className="space-y-2">
-              <SectionTitle>Account</SectionTitle>
-              <p className="text-[11px] leading-relaxed text-studio-muted">
-                {demoOnly ? (
-                  <>
-                    <span className="text-amber-200/90">Demo mode (Supabase only):</span> sign in with Supabase for cloud
-                    projects, <span className="text-slate-400">Devices</span>, and dashboard APIs. Express / local API
-                    accounts are hidden.
-                  </>
-                ) : (
-                  <>
-                    Sign in to save and open projects on Supabase or on the optional local dev API. With{' '}
-                    <span className="text-slate-400">Local API</span> sign-in you also get{' '}
-                    <span className="text-slate-400">Devices</span> in the toolbar for live ESP32 sensors. You can always
-                    use <span className="text-slate-400">this browser only</span> without an account.
-                  </>
-                )}
-              </p>
+              <SectionTitle>Cloud account</SectionTitle>
+              <SecondaryDetails summary="More info">
+                <p>
+                  {demoOnly ? (
+                    <>
+                      Use the email sign-in below for cloud projects and{' '}
+                      <span className="text-slate-400">Devices</span>. This build does not show a separate local-server
+                      account.
+                    </>
+                  ) : (
+                    <>
+                      Your cloud account syncs projects across browsers. You can also work{' '}
+                      <span className="text-slate-400">in this browser only</span> without signing in. Need a local dev
+                      database? Expand <span className="text-slate-400">Developer · local server</span> below.
+                    </>
+                  )}
+                </p>
+              </SecondaryDetails>
 
               <div className="space-y-2">
-                <p className="text-[10px] font-medium uppercase tracking-wide text-slate-500">Supabase cloud</p>
                 <Panel>
                   {!isSupabaseConfigured() ? (
-                    <p className="text-[11px] leading-relaxed text-studio-muted">
-                      Not configured. Add{' '}
-                      <code className="rounded bg-black/35 px-1 font-mono text-[10px]">VITE_SUPABASE_URL</code> and{' '}
-                      <code className="rounded bg-black/35 px-1 font-mono text-[10px]">VITE_SUPABASE_ANON_KEY</code> to{' '}
-                      <code className="rounded bg-black/35 px-1 font-mono text-[10px]">.env.local</code>, restart Vite, and
-                      create <code className="rounded bg-black/35 px-1 font-mono text-[10px]">ide_projects</code> in
-                      Supabase (see README).
-                    </p>
+                    <div className="space-y-2">
+                      <p className="text-[11px] text-studio-muted">
+                        Cloud storage isn’t configured. Expand below for steps.
+                      </p>
+                      <SecondaryDetails summary="Cloud setup (hosting)">
+                        <p>
+                          Add <code className="rounded bg-black/35 px-1 font-mono text-[10px]">VITE_SUPABASE_URL</code> and{' '}
+                          <code className="rounded bg-black/35 px-1 font-mono text-[10px]">VITE_SUPABASE_ANON_KEY</code> to{' '}
+                          <code className="rounded bg-black/35 px-1 font-mono text-[10px]">.env.local</code>, restart Vite,
+                          and create <code className="rounded bg-black/35 px-1 font-mono text-[10px]">ide_projects</code> in
+                          Supabase (see README).
+                        </p>
+                      </SecondaryDetails>
+                    </div>
                   ) : sbUser ? (
                     <div>
                       <p className="text-[11px] font-medium text-emerald-200/90">Signed in</p>
                       <p className="mt-1 break-all font-mono text-[11px] text-slate-200">
                         {sbUser.email ?? sbUser.id}
-                      </p>
-                      <p className="mt-2 text-[10px] leading-relaxed text-studio-muted">
-                        Toolbar <span className="text-slate-400">Save / Open</span> can use your cloud projects when
-                        Supabase has priority (see Save &amp; projects below).
                       </p>
                       <div className="mt-2">
                         <Button
@@ -252,7 +268,7 @@ export default function SettingsModal({ open, onClose }) {
                           disabled={sbLoading}
                           onClick={() => void handleSupabaseSignOut()}
                         >
-                          Sign out (Supabase)
+                          Sign out of cloud
                         </Button>
                       </div>
                     </div>
@@ -342,19 +358,15 @@ export default function SettingsModal({ open, onClose }) {
               </div>
 
               {!demoOnly ? (
-                <div className="space-y-2">
-                  <p className="text-[10px] font-medium uppercase tracking-wide text-slate-500">
-                    Local API <span className="font-normal normal-case text-studio-muted">(optional, dev server)</span>
+                <SecondaryDetails summary="Developer · local server (optional)">
+                  <p className="text-[10px] text-studio-muted">
+                    For development: SQLite on your machine when the API is running. Not required for normal cloud use.
                   </p>
-                  <Panel>
+                  <Panel className="mt-2">
                     {isAuthenticated ? (
                       <div>
-                        <p className="text-[11px] font-medium text-sky-200/90">Signed in</p>
+                        <p className="text-[11px] font-medium text-sky-200/90">Signed in (local server)</p>
                         <p className="mt-1 font-mono text-[11px] text-slate-200">{login}</p>
-                        <p className="mt-2 text-[10px] leading-relaxed text-studio-muted">
-                          Projects live in SQLite when the API is running (<span className="font-mono">npm run dev:full</span>
-                          ). Use <span className="text-slate-400">Devices</span> in the top bar for sensors.
-                        </p>
                         <div className="mt-2 flex flex-wrap gap-2">
                           <Link
                             to="/devices"
@@ -364,7 +376,7 @@ export default function SettingsModal({ open, onClose }) {
                             Open Devices & sensors
                           </Link>
                           <Button variant="default" className="!text-xs" onClick={handleSignOut}>
-                            Sign out (local API)
+                            Sign out of local server
                           </Button>
                         </div>
                       </div>
@@ -446,146 +458,118 @@ export default function SettingsModal({ open, onClose }) {
                       </div>
                     )}
                   </Panel>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <p className="text-[10px] font-medium uppercase tracking-wide text-slate-500">Local API</p>
-                  <Panel>
-                    <p className="text-[11px] leading-relaxed text-studio-muted">
-                      Not available in demo mode. Use <span className="text-slate-400">Supabase cloud</span> above for
-                      sign-in; device APIs use your Supabase access token only.
-                    </p>
-                  </Panel>
-                </div>
-              )}
+                </SecondaryDetails>
+              ) : null}
             </section>
 
-            {/* Save & projects */}
+            {/* Save & open */}
             <section className="space-y-2">
-              <SectionTitle>Save &amp; projects</SectionTitle>
-              <Panel>
-                <p className="text-[10px] font-medium uppercase tracking-wide text-slate-500">Active Save / Open target</p>
-                <p className="mt-1.5 inline-flex items-center rounded-md bg-[#1a1d22] px-2 py-1 font-mono text-[11px] text-emerald-200/90 ring-1 ring-white/[0.06]">
+              <SectionTitle>Save &amp; open</SectionTitle>
+              <Panel className="py-2">
+                <p className="text-[10px] font-medium uppercase tracking-wide text-slate-500">
+                  Where Save / Open goes right now
+                </p>
+                <p className="mt-1 inline-flex items-center rounded-md bg-[#1a1d22] px-2 py-1 font-mono text-[11px] text-emerald-200/90 ring-1 ring-white/[0.06]">
                   {activeSaveLabel}
                 </p>
-                <p className="mt-3 text-[11px] leading-relaxed text-studio-muted">
-                  <span className="font-medium text-slate-400">Priority:</span>{' '}
-                  {demoOnly ? (
-                    <>
-                      Supabase (when signed in) → otherwise this browser only. Local API Save/Open is disabled in demo
-                      mode.
-                    </>
-                  ) : (
-                    <>
-                      Supabase (when configured and you’re signed in) → then local API (when signed in) → otherwise this
-                      browser only.
-                    </>
-                  )}
-                </p>
-                <ul className="mt-2 list-inside list-disc space-y-1 text-[10px] leading-relaxed text-studio-muted">
-                  <li>
-                    <span className="text-slate-400">Supabase</span> — cloud database; same account on any browser.
-                  </li>
-                  {!demoOnly ? (
-                    <li>
-                      <span className="text-slate-400">Local API</span> — SQLite on your machine; needs{' '}
-                      <span className="font-mono">npm run server</span> / <span className="font-mono">dev:full</span>.
-                    </li>
-                  ) : null}
-                  <li>
-                    <span className="text-slate-400">This browser</span> — <span className="font-mono">localStorage</span>
-                    ; File → <span className="text-slate-400">Save to this browser only</span> forces it.
-                  </li>
-                </ul>
-                <p className="mt-2 border-t border-studio-border/50 pt-2 text-[10px] leading-relaxed text-studio-muted">
-                  <span className="text-slate-400">File → Open…</span> lists Supabase, local API, and browser projects in
-                  separate sections. <span className="text-slate-400">Export Project</span> always downloads a file.
-                </p>
-                <p className="mt-2 text-[10px] leading-relaxed text-studio-muted">
-                  <span className="text-slate-400">Toolbar title &amp; notes</span> are stored with Save / Save As / Export
-                  Project. <span className="text-slate-400">Clear canvas</span> keeps them; <span className="text-slate-400">New project</span>{' '}
-                  resets title and notes. Changing the board does not clear them.
-                </p>
-                <p className="mt-2 text-[10px] leading-relaxed text-studio-muted">
-                  <span className="text-slate-400">Unsaved session backup</span> — this browser may offer to restore your last
-                  in-progress canvas after a refresh (separate from named saves). <span className="text-slate-400">New project</span>{' '}
-                  clears that backup.
-                </p>
+                <div className="mt-2">
+                  <SecondaryDetails summary="How saving works (priority, browser storage, File menu)">
+                    <p>
+                      <span className="font-medium text-slate-400">Order of use:</span>{' '}
+                      {demoOnly ? (
+                        <>
+                          Cloud when signed in; otherwise this browser only. (Local dev server Save/Open is off in this
+                          build.)
+                        </>
+                      ) : (
+                        <>
+                          Cloud when signed in; if you use a local dev server and sign in there, that can be next; otherwise
+                          this browser only.
+                        </>
+                      )}
+                    </p>
+                    {isSupabaseConfigured() && sbUser ? (
+                      <p>
+                        Signed in to cloud: toolbar <span className="text-slate-400">Save / Open</span> uses cloud projects
+                        when cloud has priority.
+                      </p>
+                    ) : null}
+                    {!demoOnly && isAuthenticated ? (
+                      <p>
+                        Local dev server: projects live in SQLite when the API is running (
+                        <span className="font-mono">npm run dev:full</span>). Use <span className="text-slate-400">Devices</span>{' '}
+                        in the top bar for sensors.
+                      </p>
+                    ) : null}
+                    <ul className="list-inside list-disc space-y-1">
+                      <li>
+                        <span className="text-slate-400">Cloud account</span> — same projects on any browser when you sign
+                        in.
+                      </li>
+                      {!demoOnly ? (
+                        <li>
+                          <span className="text-slate-400">Local dev server</span> — SQLite on your machine; needs{' '}
+                          <span className="font-mono">npm run server</span> / <span className="font-mono">dev:full</span>.
+                        </li>
+                      ) : null}
+                      <li>
+                        <span className="text-slate-400">This browser</span> —{' '}
+                        <span className="font-mono">localStorage</span>; File →{' '}
+                        <span className="text-slate-400">Save to this browser only</span> forces it.
+                      </li>
+                    </ul>
+                    <p>
+                      <span className="text-slate-400">File → Open…</span> lists cloud, optional local server, and this
+                      browser in separate sections. <span className="text-slate-400">Export Project</span> always downloads
+                      a file.
+                    </p>
+                    <p>
+                      <span className="text-slate-400">Toolbar title &amp; notes</span> are stored with Save / Save As /
+                      Export Project. <span className="text-slate-400">Clear canvas</span> keeps them;{' '}
+                      <span className="text-slate-400">New project</span> resets title and notes.
+                    </p>
+                    <p>
+                      <span className="text-slate-400">Unsaved session backup</span> — this browser may offer to restore your
+                      last in-progress canvas after a refresh (separate from named saves).{' '}
+                      <span className="text-slate-400">New project</span> clears that backup.
+                    </p>
+                  </SecondaryDetails>
+                </div>
               </Panel>
             </section>
 
             {/* IDE preferences */}
             <section className="space-y-2">
               <SectionTitle>IDE preferences</SectionTitle>
-              <Panel className="space-y-4">
+              <Panel className="space-y-3 py-2">
                 <div>
-                  <label className="mb-1 block text-[11px] font-medium text-slate-400" htmlFor="set-board">
-                    Default board
-                  </label>
-                  <select
-                    id="set-board"
-                    value={boardId}
-                    onChange={(e) => setBoardId(e.target.value)}
-                    className={inputCls}
-                  >
-                    <option value="arduino_uno">{BOARD_LABEL.arduino_uno}</option>
-                    <option value="esp32">{BOARD_LABEL.esp32}</option>
-                  </select>
-                  <p className="mt-1 text-[10px] text-studio-muted">
-                    Matches the toolbar board: Uno → Arduino C++ preview + .ino export; ESP32 → MicroPython preview + .py
-                    export and serial Upload.
+                  <span className="mb-0.5 block text-[11px] font-medium text-slate-400">Hardware target</span>
+                  <p className={`${inputCls} border-studio-border/60 bg-[#1b1f24] text-slate-200`}>{BOARD_LABEL.esp32}</p>
+                </div>
+                <SecondaryDetails summary="Code preview &amp; upload">
+                  <p>
+                    The right panel shows MicroPython generated from blocks.{' '}
+                    <span className="text-slate-300/90">Upload</span> writes preview code to{' '}
+                    <span className="font-mono text-slate-400">main.py</span> over USB serial when connected.
                   </p>
-                </div>
-                <div>
-                  <span className="mb-1 block text-[11px] font-medium text-slate-400">Theme</span>
-                  <select
-                    disabled
-                    className="w-full cursor-not-allowed rounded border border-studio-border/60 bg-[#1a1d22] px-2 py-1.5 text-xs text-slate-500"
-                    value="dark"
-                    aria-label="Theme — dark only for now"
-                  >
-                    <option value="dark">Dark (only option today)</option>
-                  </select>
-                  <p className="mt-1 text-[10px] text-studio-muted">More themes may be added later.</p>
-                </div>
-                <div>
-                  <span className="mb-1 block text-[11px] font-medium text-slate-400">Layout density</span>
-                  <p className="text-[11px] text-slate-300">Standard</p>
-                  <p className="mt-1 text-[10px] italic text-studio-muted">
-                    Compact UI is not available yet — this is a placeholder for a future setting.
+                  <p className="text-amber-200/80">
+                    <span className="font-medium text-amber-200/90">Serial:</span> Web Serial needs Chrome / Edge / Opera.{' '}
+                    <span className="text-slate-400">Export Project</span> is always a .json backup;{' '}
+                    <span className="text-slate-400">Export Code</span> downloads <span className="font-mono text-slate-400">.py</span>.
                   </p>
-                </div>
-                <div className="border-t border-studio-border/50 pt-3">
-                  <span className="block text-[11px] font-medium text-slate-400">Code preview</span>
-                  <p className="mt-1 text-[10px] leading-relaxed text-studio-muted">
-                    Right panel is live for the selected board:{' '}
-                    {boardId === 'esp32' ? 'MicroPython for ESP32 (Upload writes main.py when serial is connected).' : 'C++ sketch for Arduino Uno (flash via Arduino IDE; Export .ino).'}
-                  </p>
-                </div>
+                </SecondaryDetails>
               </Panel>
             </section>
 
             {/* About */}
-            <section className="space-y-2">
-              <SectionTitle>About</SectionTitle>
-              <Panel>
-                <p className="text-sm font-semibold text-slate-100">SIMATS BLOX</p>
-                <p className="mt-1 text-[11px] leading-relaxed text-studio-muted">
-                  Block-based editor for Arduino Uno and ESP32 — build sketches with hardware-oriented blocks and a live
-                  code preview.
+            <section>
+              <SecondaryDetails summary={`More info · SIMATS BLOX v${pkg.version}`}>
+                <p className="font-semibold text-slate-200">SIMATS BLOX</p>
+                <p>
+                  Block-based editor for ESP32 — hardware-oriented blocks and a live MicroPython preview.
                 </p>
-                <p className="mt-2 font-mono text-[10px] text-slate-500">Version {pkg.version}</p>
-                <p className="mt-3 text-[10px] leading-relaxed text-amber-200/75">
-                  <span className="font-medium text-amber-200/90">Board modes:</span>{' '}
-                  <span className="text-slate-300/90">ESP32</span> —{' '}
-                  <span className="text-slate-300/90">Upload</span> sends preview MicroPython to{' '}
-                  <span className="font-mono text-slate-400">main.py</span> over USB serial when connected.{' '}
-                  <span className="text-slate-300/90">Arduino Uno</span> — no in-browser flash; use{' '}
-                  <span className="text-slate-300/90">Export Code (.ino)</span> and Arduino IDE;{' '}
-                  <span className="text-slate-300/90">Connect</span> is for Serial Monitor only. Web Serial needs Chrome /
-                  Edge / Opera. <span className="text-slate-400">Export Project</span> is always a .json backup.
-                </p>
-              </Panel>
+                <p className="font-mono text-slate-500">Version {pkg.version}</p>
+              </SecondaryDetails>
             </section>
           </div>
         </div>

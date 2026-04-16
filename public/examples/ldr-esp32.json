@@ -1,40 +1,41 @@
 {
   "version": 1,
-  "projectName": "Example: Serial Monitor (basic)",
-  "boardId": "arduino_uno",
-  "description": "Opens Serial at 9600 baud and prints a line every 1 s. Open the IDE Serial Monitor at 9600 to see output.",
+  "projectName": "Example: LDR light sensor",
+  "boardId": "esp32",
+  "description": "Photoresistor divider → GPIO33 (ADC1). Raw value trend depends on how the divider is wired.",
   "blockly": {
     "blocks": {
       "languageVersion": 0,
       "blocks": [
         {
-          "type": "board_when_starts",
-          "id": "po9?,$uwndeX[b6vyLUd",
+          "type": "esp32_when_starts",
+          "id": "og~O84jB?-;=Z40FYV}I",
           "x": 20,
           "y": 20,
           "next": {
             "block": {
               "type": "comm_serial_begin",
-              "id": "^Svj(KvFde[.1la;Vw)=",
+              "id": "O9{Mvu5?u!$DrB:7HRJi",
               "fields": {
-                "BAUD": 9600
+                "BAUD": 115200
               },
               "next": {
                 "block": {
                   "type": "hw_forever",
-                  "id": "CwH8o$R-6KPo/])|.R#F",
+                  "id": "M:JgekO7!52e)!eh_RN2",
                   "inputs": {
                     "DO": {
                       "block": {
                         "type": "comm_serial_println",
-                        "id": "3ir[us$TL]:lroa2I`N$",
+                        "id": "~`TLwoHnAak]ooOI=21V",
                         "inputs": {
                           "VAL": {
                             "block": {
-                              "type": "text",
-                              "id": "0s|b~;T=hFy8f3Zs4?*}",
+                              "type": "sensor_analog_mblock",
+                              "id": "j~(.fWOC%847n2/.L@Ft",
                               "fields": {
-                                "TEXT": "Hello from Uno"
+                                "ASTYPE": "LDR",
+                                "APIN": 33
                               }
                             }
                           }
@@ -42,9 +43,9 @@
                         "next": {
                           "block": {
                             "type": "hw_wait",
-                            "id": "1x|tIJ~tUq.=f0Hikf}7",
+                            "id": "k[EGzy#up3(%#~_:]}A(",
                             "fields": {
-                              "MS": 1000
+                              "MS": 500
                             }
                           }
                         }

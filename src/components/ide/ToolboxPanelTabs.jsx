@@ -1,11 +1,8 @@
-import { useIdeStore } from '../../store/ideStore.js';
-
 /**
  * Compact Blocks | Code switch for the left toolbox column (Code = in-IDE hint; full preview stays on the right).
  * @param {{ value: 'blocks' | 'code', onChange: (v: 'blocks' | 'code') => void }}
  */
 export default function ToolboxPanelTabs({ value, onChange }) {
-  const boardId = useIdeStore((s) => s.boardId);
   return (
     <div className="flex h-[28px] shrink-0 items-stretch border-b border-studio-border bg-[#1c1f24] px-1 py-0.5">
       <div
@@ -36,11 +33,7 @@ export default function ToolboxPanelTabs({ value, onChange }) {
               : 'text-studio-muted hover:text-slate-300'
           }`}
           onClick={() => onChange('code')}
-          title={
-            boardId === 'esp32'
-              ? 'Peek at MicroPython — full preview and Export .py on the right'
-              : 'Peek at Arduino C++ — full preview and Export .ino on the right'
-          }
+          title="Peek at MicroPython — full preview and Export .py on the right"
         >
           Code
         </button>

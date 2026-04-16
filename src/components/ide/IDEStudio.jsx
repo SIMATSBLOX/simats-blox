@@ -9,13 +9,15 @@ import CodePreviewPanel from './CodePreviewPanel.jsx';
 import ConsolePanel from './ConsolePanel.jsx';
 import ResizeHandle from './ResizeHandle.jsx';
 import SessionRecoveryModal from './SessionRecoveryModal.jsx';
-import { buildSketch } from '../../blockly/generators/arduinoGenerator.js';
+import IdeLiveMonitorPanel from './IdeLiveMonitorPanel.jsx';
 import { buildMicroPythonSketch } from '../../blockly/generators/micropythonGenerator.js';
 import { useIdeStore } from '../../store/ideStore.js';
 import { flushSessionAutosave, scheduleSessionAutosave } from '../../lib/sessionAutosave.js';
 import {
   clearSessionDraft,
+  consumeIdeRecoveryModalSuppression,
   isSessionDraftMeaningful,
+  markIdeSessionRecoverySpaLeave,
   readSessionDraftRaw,
   validateSessionDraft,
 } from '../../lib/sessionRecoveryStore.js';
@@ -54,13 +56,16 @@ function clamp(n, lo, hi) {
   return Math.min(hi, Math.max(lo, n));
 }
 
-export default function IDEStudio() {
+export default function IDEStudio({
+  liveMonitorDeviceId = '',
+  liveMonitorSensorTypeHint = '',
+  onCloseLiveMonitor = () => {},
+}) {
   const [workspace, setWorkspace] = useState(null);
   const [code, setCode] = useState('');
   const [leftToolboxTab, setLeftToolboxTab] = useState(/** @type {'blocks' | 'code'} */ ('blocks'));
   const [recoveryOpen, setRecoveryOpen] = useState(false);
   const [recoveryDraftMeta, setRecoveryDraftMeta] = useState(/** @type {object | null} */ (null));
-  const boardId = useIdeStore((s) => s.boardId);
   const timerRef = useRef(0);
   const workspaceRef = useRef(/** @type {import('blockly/core/workspace').WorkspaceSvg | null} */ (null));
   const recoveryHandledRef = useRef(false);
@@ -140,35 +145,10 @@ export default function IDEStudio() {
   }, [workspace]);
 
   useEffect(() => {
-    if (!workspace || recoveryHandledRef.current) return;
-    recoveryHandledRef.current = true;
-
-    const raw = readSessionDraftRaw();
-    if (!raw) return;
-
-    let data;
-    try {
-      data = JSON.parse(raw);
-    } catch {
-      clearSessionDraft();
-      return;
-    }
-    if (!validateSessionDraft(data)) {
-      clearSessionDraft();
-      return;
-    }
-    if (!isSessionDraftMeaningful(data)) {
-      clearSessionDraft();
-      return;
-    }
-    pendingRecoveryRef.current = data;
-    setRecoveryDraftMeta({
-      projectName: data.projectName,
-      savedAt: data.savedAt,
-      description: data.description,
-    });
-    setRecoveryOpen(true);
-  }, [workspace]);
+    return () => {
+      markIdeSessionRecoverySpaLeave();
+    };
+  }, []);
 
   useEffect(() => {
     if (!workspace) return undefined;
@@ -237,17 +217,13 @@ export default function IDEStudio() {
     setMobileCodeH((h) => clamp(h + d, 100, mobileCodeMax()));
   }, []);
 
-  const safeCodegen = useCallback((ws, board) => {
+  const safeCodegen = useCallback((ws) => {
     if (!ws) {
       setCode('');
       return;
     }
     try {
-      if (board === 'esp32') {
-        setCode(buildMicroPythonSketch(ws));
-      } else {
-        setCode(buildSketch(ws, board));
-      }
+      setCode(buildMicroPythonSketch(ws));
     } catch (err) {
       console.error(err);
       setCode(
@@ -261,7 +237,7 @@ export default function IDEStudio() {
       if (!ws) return;
       window.clearTimeout(timerRef.current);
       timerRef.current = window.setTimeout(() => {
-        safeCodegen(ws, useIdeStore.getState().boardId);
+        safeCodegen(ws);
       }, 120);
     },
     [safeCodegen],
@@ -269,11 +245,11 @@ export default function IDEStudio() {
 
   useEffect(() => {
     if (workspace) {
-      safeCodegen(workspace, boardId);
+      safeCodegen(workspace);
     } else {
       setCode('');
     }
-  }, [boardId, workspace, safeCodegen]);
+  }, [workspace, safeCodegen]);
 
   const workspacePanelProps = {
     onWorkspaceReady: (ws) => {
@@ -297,11 +273,73 @@ export default function IDEStudio() {
       } catch {
         /* ignore */
       }
-      const bid = useIdeStore.getState().boardId;
-      safeCodegen(ws, bid);
+      safeCodegen(ws);
       scheduleSessionAutosave(ws);
     });
   }, [workspace, safeCodegen]);
+
+  const applyRecoveryPayloadToWorkspace = useCallback((ws, data) => {
+    const st = useIdeStore.getState();
+    st.setBrowserProjectId(null);
+    st.setCloudProjectId(null);
+    st.applyImportPayload(data);
+    ws.clear();
+    Blockly.serialization.workspaces.load(data.blockly, ws, { recordUndo: false });
+    clearSessionDraft();
+    safeCodegen(ws);
+    flushSessionAutosave(ws);
+    queueMicrotask(() => {
+      try {
+        Blockly.svgResize(ws);
+      } catch {
+        /* ignore */
+      }
+    });
+  }, [safeCodegen]);
+
+  useEffect(() => {
+    if (!workspace || recoveryHandledRef.current) return;
+    recoveryHandledRef.current = true;
+
+    const parseMeaningfulDraft = () => {
+      const raw = readSessionDraftRaw();
+      if (!raw) return null;
+      let data;
+      try {
+        data = JSON.parse(raw);
+      } catch {
+        clearSessionDraft();
+        return null;
+      }
+      if (!validateSessionDraft(data) || !isSessionDraftMeaningful(data)) {
+        clearSessionDraft();
+        return null;
+      }
+      return data;
+    };
+
+    if (consumeIdeRecoveryModalSuppression()) {
+      const data = parseMeaningfulDraft();
+      if (!data) return;
+      try {
+        applyRecoveryPayloadToWorkspace(workspace, data);
+      } catch (e) {
+        console.error(e);
+        clearSessionDraft();
+      }
+      return;
+    }
+
+    const data = parseMeaningfulDraft();
+    if (!data) return;
+    pendingRecoveryRef.current = data;
+    setRecoveryDraftMeta({
+      projectName: data.projectName,
+      savedAt: data.savedAt,
+      description: data.description,
+    });
+    setRecoveryOpen(true);
+  }, [workspace, applyRecoveryPayloadToWorkspace]);
 
   const handleRecoveryRestore = useCallback(() => {
     const data = pendingRecoveryRef.current;
@@ -312,27 +350,11 @@ export default function IDEStudio() {
       return;
     }
     try {
-      const st = useIdeStore.getState();
-      st.setBrowserProjectId(null);
-      st.setCloudProjectId(null);
-      st.applyImportPayload(data);
-      ws.clear();
-      Blockly.serialization.workspaces.load(data.blockly, ws, { recordUndo: false });
+      applyRecoveryPayloadToWorkspace(ws, data);
       pendingRecoveryRef.current = null;
       setRecoveryOpen(false);
       setRecoveryDraftMeta(null);
-      clearSessionDraft();
-      const bid = useIdeStore.getState().boardId;
-      safeCodegen(ws, bid);
-      flushSessionAutosave(ws);
-      queueMicrotask(() => {
-        try {
-          Blockly.svgResize(ws);
-        } catch {
-          /* ignore */
-        }
-      });
-      st.appendLog('info', 'Recovered your last unsaved session from this browser.');
+      useIdeStore.getState().appendLog('info', 'Recovered your last unsaved session from this browser.');
       toast('success', 'Recovered your last session.');
     } catch (e) {
       console.error(e);
@@ -343,7 +365,7 @@ export default function IDEStudio() {
       useIdeStore.getState().appendLog('error', 'Could not restore session backup — it was removed.');
       toast('error', 'Recovery failed — backup discarded.');
     }
-  }, [safeCodegen]);
+  }, [applyRecoveryPayloadToWorkspace]);
 
   const handleRecoveryDiscard = useCallback(() => {
     clearSessionDraft();
@@ -362,7 +384,16 @@ export default function IDEStudio() {
         onDiscard={handleRecoveryDiscard}
       />
       <TopToolbar workspace={workspace} previewCode={code} onAfterProjectImport={handleAfterProjectImport} />
-      <div className="flex min-h-0 flex-1 flex-col gap-0 overflow-hidden md:flex-row">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden md:flex-row">
+        {liveMonitorDeviceId ? (
+          <IdeLiveMonitorPanel
+            deviceId={liveMonitorDeviceId}
+            sensorTypeHint={liveMonitorSensorTypeHint}
+            onClose={onCloseLiveMonitor}
+            className="max-h-[min(40vh,280px)] shrink-0 overflow-hidden border-b border-studio-border md:h-auto md:max-h-none md:w-[220px] md:shrink-0 md:border-b-0 md:border-r md:border-studio-border"
+          />
+        ) : null}
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-0 overflow-hidden md:flex-row">
         {isDesktop ? (
           <>
             <div className="flex h-full min-h-0 min-w-0 flex-1">
@@ -377,11 +408,7 @@ export default function IDEStudio() {
             <ResizeHandle
               axis="col"
               onDrag={onCodeDrag}
-              title={
-                boardId === 'esp32'
-                  ? 'Resize MicroPython code preview width'
-                  : 'Resize Arduino sketch preview width'
-              }
+              title="Resize MicroPython code preview width"
             />
             <div className="h-full shrink-0 overflow-hidden" style={{ width: codeW }}>
               <CodePreviewPanel code={code} />
@@ -407,17 +434,14 @@ export default function IDEStudio() {
             <ResizeHandle
               axis="row"
               onDrag={onMobileCodeDrag}
-              title={
-                boardId === 'esp32'
-                  ? 'Resize MicroPython code preview height'
-                  : 'Resize Arduino sketch preview height'
-              }
+              title="Resize MicroPython code preview height"
             />
             <div className="shrink-0 overflow-hidden border-t border-studio-border" style={{ height: mobileCodeH }}>
               <CodePreviewPanel code={code} />
             </div>
           </>
         )}
+        </div>
       </div>
       <ResizeHandle
         axis="row"

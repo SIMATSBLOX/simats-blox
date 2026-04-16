@@ -1,38 +1,38 @@
 {
   "version": 1,
-  "projectName": "Example: Ultrasonic distance",
+  "projectName": "Example: HC-SR04 ultrasonic distance",
   "boardId": "esp32",
-  "description": "HC-SR04-style: TRIG GPIO5, ECHO GPIO18 (3.3 V safe levels — use a level shifter if your module is 5 V only). Prints cm every 500 ms.",
+  "description": "HC-SR04: TRIG GPIO5, ECHO GPIO18. Use 3.3 V–safe wiring or a level shifter if the module is 5 V.",
   "blockly": {
     "blocks": {
       "languageVersion": 0,
       "blocks": [
         {
           "type": "esp32_when_starts",
-          "id": "]B)l@`Tctm@[pIU`!!-3",
+          "id": ",[q(sY+`hSD,_C{x~3PZ",
           "x": 20,
           "y": 20,
           "next": {
             "block": {
               "type": "comm_serial_begin",
-              "id": "B{K=qa``m$|{/vGAd81+",
+              "id": "J,*U^F0IH%^y!HgAC}i5",
               "fields": {
                 "BAUD": 115200
               },
               "next": {
                 "block": {
                   "type": "hw_forever",
-                  "id": "ecAIFq{EP-BgKU7A+.@5",
+                  "id": "~XwM),4[As,JsFpk8HxI",
                   "inputs": {
                     "DO": {
                       "block": {
                         "type": "comm_serial_println",
-                        "id": "-=gX4d=NIB$k2E*vu:F|",
+                        "id": "lN;|Fi{Fyung;O%)YE79",
                         "inputs": {
                           "VAL": {
                             "block": {
                               "type": "sensor_ultrasonic_mblock",
-                              "id": "hDm{mLhC1ZU|S;hQPt?l",
+                              "id": "jJChQByY(YIh;:8Yr4(a",
                               "fields": {
                                 "TRIG": 5,
                                 "ECHO": 18
@@ -43,7 +43,7 @@
                         "next": {
                           "block": {
                             "type": "hw_wait",
-                            "id": "h_lmO3QyIQi)(::L#3S.",
+                            "id": "[(_dTh-J=q.{L;0+kYWS",
                             "fields": {
                               "MS": 500
                             }

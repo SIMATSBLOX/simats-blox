@@ -15,6 +15,7 @@ import {
   formatExampleReadingJson,
 } from '../../lib/serialBridgeExamples.js';
 import { toast } from '../../lib/toast.js';
+import { formatSensorDeviceDetailTitle, formatSensorSelectOptionLabel } from '../../lib/sensorAddPresets.js';
 import Button from '../ui/Button.jsx';
 
 /**
@@ -44,9 +45,10 @@ export default function SerialBridgeKeyCard({ devices }) {
     return savedIds
       .map((id) => {
         const d = byId.get(id);
-        return { deviceId: id, name: d?.name ?? id };
+        const device = d ?? { deviceId: id, name: '', sensorType: '' };
+        return { deviceId: id, device };
       })
-      .sort((a, b) => a.name.localeCompare(b.name));
+      .sort((a, b) => formatSensorSelectOptionLabel(a.device).localeCompare(formatSensorSelectOptionLabel(b.device)));
   }, [devices, savedIds]);
 
   const targetForExamples = useMemo(() => {
@@ -175,8 +177,12 @@ export default function SerialBridgeKeyCard({ devices }) {
             >
               <option value="">Select…</option>
               {devices.map((d) => (
-                <option key={d.deviceId} value={d.deviceId}>
-                  {d.name}
+                <option
+                  key={d.deviceId}
+                  value={d.deviceId}
+                  title={formatSensorDeviceDetailTitle(d)}
+                >
+                  {formatSensorSelectOptionLabel(d)}
                   {getStoredDeviceApiKey(d.deviceId) ? ' · key saved' : ''}
                 </option>
               ))}
@@ -207,7 +213,7 @@ export default function SerialBridgeKeyCard({ devices }) {
                 key={row.deviceId}
                 className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-300"
               >
-                <span className="font-medium text-slate-200">{row.name}</span>
+                <span className="font-medium text-slate-200">{formatSensorSelectOptionLabel(row.device)}</span>
                 <Button
                   type="button"
                   variant="ghost"

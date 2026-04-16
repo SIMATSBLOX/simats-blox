@@ -63,6 +63,7 @@ const FIELD_DIGITAL_SENSOR_TYPE = {
   name: 'DSTYPE',
   options: [
     ['motion (PIR)', 'PIR'],
+    ['IR obstacle / line', 'IR'],
     ['touch button', 'TOUCH'],
     ['magnetic (reed)', 'REED'],
   ],
@@ -74,7 +75,17 @@ const FIELD_ANALOG_SENSOR_TYPE = {
   options: [
     ['light / photoresistor', 'LDR'],
     ['soil moisture', 'SOIL'],
-    ['gas / MQ', 'GAS'],
+    ['gas / MQ-2', 'GAS'],
+    ['rain sensor', 'RAIN'],
+  ],
+};
+
+const FIELD_BMP280_MEASURE = {
+  type: 'field_dropdown',
+  name: 'BMPFIELD',
+  options: [
+    ['temperature (°C)', 'TEMP'],
+    ['pressure (hPa)', 'PRESS'],
   ],
 };
 
@@ -249,7 +260,7 @@ export const mblockHardwareBlockDefinitions = [
     inputsInline: true,
     output: 'Number',
     style: 'esp32_blocks',
-    tooltip: 'Raw ADC read. On Uno, GPIO 0–5 map to A0–A5. On ESP32 pick an ADC-capable pin.',
+    tooltip: 'Raw ADC read — pick an ADC-capable GPIO on ESP32.',
   },
   {
     type: 'esp32_set_digital_out',
@@ -288,21 +299,21 @@ export const mblockHardwareBlockDefinitions = [
     inputsInline: true,
     output: 'Number',
     style: 'esp32_blocks',
-    tooltip: 'ESP32 capacitive touch (T0–T9). On Uno, generated code returns 0.',
+    tooltip: 'ESP32 capacitive touch (T0–T9).',
   },
   {
     type: 'esp32_hall_value',
     message0: 'read built-in hall sensor',
     output: 'Number',
     style: 'esp32_blocks',
-    tooltip: 'ESP32 only (hallRead). Returns 0 on Uno-class boards in preview.',
+    tooltip: 'ESP32 hall sensor read (hallRead).',
   },
   {
     type: 'esp32_bluetooth_mac',
     message0: 'Bluetooth MAC address (text)',
     output: 'String',
     style: 'esp32_blocks',
-    tooltip: 'ESP32: MAC string in preview. Uno: placeholder — add your module’s address in code if needed.',
+    tooltip: 'ESP32 Wi‑Fi MAC string in preview.',
   },
   {
     type: 'mblock_motor_connect',
@@ -404,13 +415,23 @@ export const mblockHardwareBlockDefinitions = [
     tooltip: 'Needs DHT library in Arduino; MicroPython uses native dht module.',
   },
   {
+    type: 'sensor_bmp280_mblock',
+    message0: 'BMP280 I2C %1',
+    args0: [FIELD_BMP280_MEASURE],
+    inputsInline: true,
+    output: 'Number',
+    style: 'sensor_cyan_blocks',
+    tooltip:
+      'BMP280 over I²C (default 0x76). Preview uses a numeric placeholder — add Adafruit BMP280 (Arduino) or a bmp280 module (MicroPython) for real readings.',
+  },
+  {
     type: 'sensor_analog_mblock',
     message0: 'analog sensor %1 on GPIO %2',
     args0: [FIELD_ANALOG_SENSOR_TYPE, fieldDigitalPin('APIN', 32, 39)],
     inputsInline: true,
     output: 'Number',
     style: 'sensor_cyan_blocks',
-    tooltip: 'analogRead on ESP32 GPIO or Uno A0–A5 style mapping — calibrate in your lesson.',
+    tooltip: 'Analog read on ESP32 (A0–A5 style mapping) — calibrate in your lesson.',
   },
   /* --- IoT / Dabble family (magenta) --- */
   {

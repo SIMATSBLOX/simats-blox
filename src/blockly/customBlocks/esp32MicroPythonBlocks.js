@@ -1,4 +1,5 @@
 import { fieldDigitalPin, fieldFrequencyHz } from './pinFields.js';
+import { shadowText } from './valueInputShadows.js';
 
 /** @type {import('blockly/core/utils/json').BlockDefinitionJson[]} */
 export const esp32MicroPythonBlockDefinitions = [
@@ -30,7 +31,7 @@ export const esp32MicroPythonBlockDefinitions = [
     type: 'mp_display_text',
     message0: 'OLED show %1 at x %2 y %3',
     args0: [
-      { type: 'input_value', name: 'TEXT' },
+      { type: 'input_value', name: 'TEXT', shadow: shadowText('Hello') },
       { type: 'field_number', name: 'X', value: 0, min: 0, max: 127, precision: 0 },
       { type: 'field_number', name: 'Y', value: 0, min: 0, max: 63, precision: 0 },
     ],

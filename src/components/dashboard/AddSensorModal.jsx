@@ -102,8 +102,8 @@ export default function AddSensorModal({ open, onClose, onCreated }) {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-studio-border bg-[#1e2228] shadow-2xl">
-        <div className="flex items-center justify-between border-b border-studio-border/80 px-4 py-3">
+      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-studio-border/90 bg-[#1e2228] shadow-2xl">
+        <div className="flex items-center justify-between border-b border-studio-border/70 px-4 py-2.5">
           <h2 id="add-sensor-title" className="text-sm font-semibold text-slate-100">
             {step === 'success' ? 'Your sensor is ready' : 'Add sensor'}
           </h2>
@@ -117,11 +117,12 @@ export default function AddSensorModal({ open, onClose, onCreated }) {
           </button>
         </div>
 
-        <div className="p-4">
+        <div className="px-4 py-3">
           {step === 'pick' ? (
             <>
               <p className="text-[11px] leading-snug text-studio-muted">
-                Choose your sensor from the list — last option if yours isn&rsquo;t shown.
+                Pick your part — or <span className="text-slate-400">Not in list</span> for other hardware (custom data
+                format).
               </p>
               <div className="mt-3 space-y-2">
                 <label className="block text-[11px] text-studio-muted" htmlFor="add-sensor-preset">

@@ -81,7 +81,7 @@ export const boardBlockDefinitions = [
     inputsInline: true,
     output: 'Number',
     style: 'math_blocks',
-    tooltip: 'Uno: A0–A5. ESP32: same labels map to common ADC1 GPIOs on many DevKit boards.',
+    tooltip: 'A0–A5 style labels map to common ADC1 GPIOs on many ESP32 DevKit boards.',
   },
   {
     type: 'board_analog_write',
@@ -91,7 +91,7 @@ export const boardBlockDefinitions = [
     previousStatement: null,
     nextStatement: null,
     style: 'loop_blocks',
-    tooltip: 'analogWrite() — Uno: ~3,5,6,9,10,11. ESP32: LEDC-backed pins in Arduino core.',
+    tooltip: 'PWM write — use LEDC-capable GPIOs on ESP32 (MicroPython preview uses PWM where supported).',
   },
   {
     type: 'board_serial_begin',

@@ -34,6 +34,16 @@ function safeFieldValue(block, name, fallback = '') {
   }
 }
 
+function stripInlinePyComment(expr) {
+  return String(expr || '0').replace(/\s+#.*$/u, '').trim() || '0';
+}
+
+function ensureSuiteOrFallback(code, fallbackLine = 'pass') {
+  const txt = String(code || '');
+  if (txt.trim()) return txt;
+  return `    ${fallbackLine}\n`;
+}
+
 function clampInt(n, lo, hi) {
   if (!Number.isFinite(n)) return lo;
   return Math.min(hi, Math.max(lo, Math.trunc(n)));
@@ -117,6 +127,130 @@ def _hw_dht_pair_${id}():
     return _hw_dht_buf_${id}
 `;
   }
+}
+
+/**
+ * Value block feeding Serial print — DHT temp or humidity (mblock or legacy blocks).
+ * @param {import('blockly/core/block').Block | null} block
+ * @returns {{ pin: number; typ: string; role: 'temp' | 'hum' } | null}
+ */
+function dhtValueBlockSpec(block) {
+  if (!block) return null;
+  try {
+    if (block.type === 'sensor_dht_mblock') {
+      const pin = digitalGpio(block, 'DPIN', 2);
+      const typ = safeFieldValue(block, 'TYPE', 'DHT11');
+      const fld = safeFieldValue(block, 'DHTFIELD', 'TEMP');
+      return { pin, typ, role: fld === 'HUM' ? 'hum' : 'temp' };
+    }
+    if (block.type === 'sensor_dht_temp') {
+      return {
+        pin: digitalGpio(block, 'DPIN', 2),
+        typ: safeFieldValue(block, 'TYPE', 'DHT11'),
+        role: 'temp',
+      };
+    }
+    if (block.type === 'sensor_dht_humidity') {
+      return {
+        pin: digitalGpio(block, 'DPIN', 2),
+        typ: safeFieldValue(block, 'TYPE', 'DHT11'),
+        role: 'hum',
+      };
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+/** @param {{ pin: number; typ: string; role: string } | null} a */
+function dhtSpecsMatchPinsAndType(a, b) {
+  return Boolean(a && b && a.pin === b.pin && a.typ === b.typ);
+}
+
+/**
+ * This println’s code was folded into the previous TEMP println (Devices serial bridge format).
+ * @param {import('blockly/core/block').Block} block
+ */
+function isDhtSerialBridgeMergeFollower(block) {
+  const prev = block.getPreviousBlock();
+  if (!prev || prev.type !== 'comm_serial_println') return false;
+  const a = dhtValueBlockSpec(prev.getInputTargetBlock('VAL'));
+  const b = dhtValueBlockSpec(block.getInputTargetBlock('VAL'));
+  if (!dhtSpecsMatchPinsAndType(a, b)) return false;
+  return a.role === 'temp' && b.role === 'hum';
+}
+
+/**
+ * Two chained printlns: DHT temperature then humidity → one line for parseSerialLineToReading (dht11).
+ * @param {import('blockly/core/block').Block} block
+ * @param {import('blockly/core/generator').CodeGenerator} gen
+ */
+function tryEmitMicropythonDhtSerialBridgePrintln(block, gen) {
+  const a = dhtValueBlockSpec(block.getInputTargetBlock('VAL'));
+  if (!a || a.role !== 'temp') return null;
+  const next = block.getNextBlock();
+  if (!next || next.type !== 'comm_serial_println') return null;
+  const b = dhtValueBlockSpec(next.getInputTargetBlock('VAL'));
+  if (!b || b.role !== 'hum' || !dhtSpecsMatchPinsAndType(a, b)) return null;
+  try {
+    ensureMpyDht(gen, a.pin, a.typ);
+  } catch {
+    return null;
+  }
+  const id = dhtMpyId(a.pin, a.typ);
+  return `_dht_br = _hw_dht_pair_${id}()\nprint("Humidity: {:.1f} % Temperature: {:.1f} °C".format(_dht_br[1], _dht_br[0]))\n`;
+}
+
+/**
+ * Single println(sensor) → one labeled line for Devices serial bridge.
+ * @param {import('blockly/core/block').Block} block
+ * @param {import('blockly/core/generator').CodeGenerator} gen
+ */
+function tryMicropythonLabeledSensorPrintln(block, gen) {
+  const vb = block.getInputTargetBlock('VAL');
+  if (!vb) return null;
+  const code = stripInlinePyComment(gen.valueToCode(block, 'VAL', Order.NONE) || '0');
+  const t = vb.type;
+  if (t === 'sensor_ultrasonic_cm' || t === 'sensor_ultrasonic_mblock') {
+    return `print("Distance: {:.2f} cm".format(${code}))\n`;
+  }
+  if (t === 'sensor_soil') {
+    return `print("Moisture Level: {:.1f} %".format(float(${code})))\n`;
+  }
+  if (t === 'sensor_ldr') {
+    return `print("Light level: {}".format(int(${code})))\n`;
+  }
+  if (t === 'sensor_gas') {
+    return `print("Gas level: {}".format(int(${code})))\n`;
+  }
+  if (t === 'sensor_analog_mblock') {
+    const tag = safeFieldValue(vb, 'ASTYPE', 'LDR');
+    if (tag === 'SOIL') {
+      return `print("Moisture Level: {:.1f} %".format(float(${code})))\n`;
+    }
+    if (tag === 'GAS') {
+      return `print("Gas level: {}".format(int(${code})))\n`;
+    }
+    if (tag === 'RAIN') {
+      return `print("Rain level: {}".format(int(${code})))\n`;
+    }
+    return `print("Light level: {}".format(int(${code})))\n`;
+  }
+  if (t === 'sensor_bmp280_mblock') {
+    const fld = safeFieldValue(vb, 'BMPFIELD', 'TEMP');
+    if (fld === 'PRESS') {
+      return `print("Pressure: {:.1f} hPa".format(float(${code})))\n`;
+    }
+    return `print("Temperature: {:.1f} °C".format(float(${code})))\n`;
+  }
+  if (t === 'sensor_digital_mblock' || t === 'input_pir_read') {
+    return `print("Detection: {}".format(1 if ${code} else 0))\n`;
+  }
+  if (t === 'input_ir_read') {
+    return `print("IR level: {}".format(int(${code})))\n`;
+  }
+  return null;
 }
 
 function apinToGpio(block) {
@@ -307,15 +441,25 @@ function ensureSsd1306Import(gen) {
 }
 
 function ensurePinOut(gen, n) {
-  const k = `%mp_pin_${n}`;
-  if (gen.definitions_[k]) return;
-  gen.definitions_[k] = `pin${n} = Pin(${n}, Pin.OUT)\n`;
+  ensurePinMode(gen, n, 'OUT', 'Pin.OUT');
 }
 
 function ensurePinIn(gen, n) {
+  ensurePinMode(gen, n, 'IN', 'Pin.IN');
+}
+
+function ensurePinInPullUp(gen, n) {
+  ensurePinMode(gen, n, 'IN_PULLUP', 'Pin.IN, Pin.PULL_UP');
+}
+
+function ensurePinMode(gen, n, modeKey, modeExpr) {
   const k = `%mp_pin_${n}`;
-  if (gen.definitions_[k]) return;
-  gen.definitions_[k] = `pin${n} = Pin(${n}, Pin.IN)\n`;
+  if (!gen.__mpPinModes) gen.__mpPinModes = {};
+  const existing = gen.__mpPinModes[n];
+  if (existing && existing !== modeKey) return;
+  if (existing === modeKey && gen.definitions_[k]) return;
+  gen.__mpPinModes[n] = modeKey;
+  gen.definitions_[k] = `pin${n} = Pin(${n}, ${modeExpr})\n`;
 }
 
 function ensureAdc(gen, gpio) {
@@ -335,6 +479,34 @@ function ensurePwm(gen, n, freq) {
   if (!gen.definitions_[k]) {
     gen.definitions_[k] = `pwm${n} = PWM(Pin(${n}), freq=${freq})\n`;
   }
+}
+
+function ensureServoHelper(gen) {
+  const k = '%mp_servo_helper';
+  if (gen.definitions_[k]) return;
+  gen.definitions_[k] = `
+_hw_servo_map = {}
+
+def set_servo_angle(pin, angle):
+    _p = int(pin)
+    _a = int(angle)
+    if _a < 0:
+        _a = 0
+    elif _a > 180:
+        _a = 180
+    _s = _hw_servo_map.get(_p)
+    if _s is None:
+        return
+    duty = int(1638 + (_a / 180) * (8192 - 1638))
+    _s.duty_u16(duty)
+`;
+}
+
+function ensureServoPin(gen, n) {
+  ensureServoHelper(gen);
+  if (!gen.__mpServoSetupInit) gen.__mpServoSetupInit = {};
+  if (gen.__mpServoSetupInit[n]) return;
+  gen.__mpServoSetupInit[n] = `global servo${n}\nservo${n} = PWM(Pin(${n}), freq=50)\n_hw_servo_map[${n}] = servo${n}\n`;
 }
 
 /**
@@ -373,12 +545,12 @@ function regenControlsIfPy(block, generator) {
     let code = '';
     do {
       const cond = generator.valueToCode(block, `IF${n}`, Order.NONE) || 'False';
-      let branch = generator.statementToCode(block, `DO${n}`);
+      let branch = ensureSuiteOrFallback(generator.statementToCode(block, `DO${n}`));
       code += (n === 0 ? 'if ' : 'elif ') + `${cond}:\n${branch}`;
       n++;
     } while (block.getInput(`IF${n}`));
     if (block.getInput('ELSE')) {
-      const branch = generator.statementToCode(block, 'ELSE');
+      const branch = ensureSuiteOrFallback(generator.statementToCode(block, 'ELSE'));
       code += `else:\n${branch}`;
     }
     return `${code}\n`;
@@ -407,7 +579,7 @@ function installSafeBlockToCodeWrapper(gen) {
     const type = block.type || 'unknown';
     if (typeof gen.forBlock[type] !== 'function') {
       if (block.outputConnection) {
-        return [`(0  # unsupported: ${type})`, Order.ATOMIC];
+        return ['(0)', Order.ATOMIC];
       }
       return `# Unsupported block: ${type}\n`;
     }
@@ -416,7 +588,7 @@ function installSafeBlockToCodeWrapper(gen) {
     } catch (err) {
       console.warn('[mpy codegen] block', type, err);
       if (block.outputConnection) {
-        return [`(0  # error: ${type})`, Order.ATOMIC];
+        return ['(0)', Order.ATOMIC];
       }
       return `# Error generating ${type}: ${String(err?.message || err)}\n`;
     }
@@ -503,10 +675,9 @@ function registerMicroPythonHardware(gen) {
     void g;
     const n = digitalGpio(block, 'DPIN', 2);
     const mode = safeFieldValue(block, 'MODE', 'OUTPUT');
-    let pyMode = 'Pin.OUT';
-    if (mode === 'INPUT') pyMode = 'Pin.IN';
-    else if (mode === 'INPUT_PULLUP') pyMode = 'Pin.IN, Pin.PULL_UP';
-    gen.definitions_[`%mp_pin_${n}`] = `pin${n} = Pin(${n}, ${pyMode})\n`;
+    if (mode === 'INPUT_PULLUP') ensurePinInPullUp(gen, n);
+    else if (mode === 'INPUT') ensurePinIn(gen, n);
+    else ensurePinOut(gen, n);
     return '';
   };
 
@@ -555,7 +726,7 @@ function registerMicroPythonHardware(gen) {
 
   gen.forBlock['hw_wait_until'] = (block, g) => {
     const c = g.valueToCode(block, 'COND', Order.NONE) || 'False';
-    return `while not (${c}):\n${gen.INDENT}pass\n`;
+    return `while not (${c}):\n${gen.INDENT}time.sleep_ms(1)\n`;
   };
 
   gen.forBlock['hw_forever'] = (block, g) => {
@@ -655,8 +826,11 @@ function registerMicroPythonHardware(gen) {
   gen.forBlock['output_servo_write'] = (block, g) => {
     void g;
     const n = digitalGpio(block, 'DPIN', 9);
-    void fieldNumberBlock(block, 'ANGLE', 90, 0, 180);
-    return `# Servo on pin ${n}: use a PWM-calibrated library or machine.PWM pulse width\n`;
+    const angleExpr =
+      (g.valueToCode(block, 'ANGLE', Order.NONE) || '').trim() ||
+      String(fieldNumberBlock(block, 'ANGLE', 90, 0, 180));
+    ensureServoPin(gen, n);
+    return `set_servo_angle(${n}, ${angleExpr})\n`;
   };
 
   gen.forBlock['output_motor_run'] = gen.forBlock['board_analog_write'];
@@ -687,7 +861,7 @@ function registerMicroPythonHardware(gen) {
       const id = dhtMpyId(pin, typ);
       return [`(_hw_dht_pair_${id}()[0])`, Order.ATOMIC];
     } catch {
-      return ['float("nan")  # DHT temp', Order.ATOMIC];
+      return ['float("nan")', Order.ATOMIC];
     }
   };
 
@@ -700,7 +874,7 @@ function registerMicroPythonHardware(gen) {
       const id = dhtMpyId(pin, typ);
       return [`(_hw_dht_pair_${id}()[1])`, Order.ATOMIC];
     } catch {
-      return ['float("nan")  # DHT humidity', Order.ATOMIC];
+      return ['float("nan")', Order.ATOMIC];
     }
   };
 
@@ -715,12 +889,19 @@ function registerMicroPythonHardware(gen) {
   gen.forBlock['sensor_gas'] = gen.forBlock['sensor_ldr'];
 
   gen.forBlock['comm_serial_print'] = (block, g) => {
-    const v = g.valueToCode(block, 'VAL', Order.NONE) || '0';
+    const v = stripInlinePyComment(g.valueToCode(block, 'VAL', Order.NONE) || '0');
     return `print(${v}, end='')\n`;
   };
 
   gen.forBlock['comm_serial_println'] = (block, g) => {
-    const v = g.valueToCode(block, 'VAL', Order.NONE) || '0';
+    if (isDhtSerialBridgeMergeFollower(block)) {
+      return '';
+    }
+    const merged = tryEmitMicropythonDhtSerialBridgePrintln(block, g);
+    if (merged) return merged;
+    const labeled = tryMicropythonLabeledSensorPrintln(block, g);
+    if (labeled) return labeled;
+    const v = stripInlinePyComment(g.valueToCode(block, 'VAL', Order.NONE) || '0');
     return `print(${v})\n`;
   };
 
@@ -740,9 +921,9 @@ function registerMicroPythonHardware(gen) {
   gen.forBlock['controls_ifelse'] = regenControlsIfPy;
 
   gen.forBlock['controls_repeat_ext'] = (block, g) => {
-    const branch = g.statementToCode(block, 'DO');
+    const branch = ensureSuiteOrFallback(g.statementToCode(block, 'DO'), 'time.sleep_ms(1)');
     if (repeatExtHasInfiniteTimes(block)) {
-      return `while True:\n${branch}`;
+      return `while True:\n${branch}${g.INDENT}time.sleep_ms(1)\n`;
     }
     let times = '1';
     try {
@@ -765,7 +946,7 @@ function registerMicroPythonHardware(gen) {
     } catch {
       times = '0';
     }
-    const branch = g.statementToCode(block, 'DO');
+    const branch = ensureSuiteOrFallback(g.statementToCode(block, 'DO'));
     return `for _ in range(${times}):\n${branch}`;
   };
 
@@ -775,7 +956,7 @@ function registerMicroPythonHardware(gen) {
       const fromV = g.valueToCode(block, 'FROM', Order.NONE) || '0';
       const toV = g.valueToCode(block, 'TO', Order.NONE) || '0';
       const byV = g.valueToCode(block, 'BY', Order.NONE) || '1';
-      const branch = g.statementToCode(block, 'DO');
+      const branch = ensureSuiteOrFallback(g.statementToCode(block, 'DO'));
       return `for ${varName} in range(int(${fromV}), int(${toV}) + 1, int(${byV})):\n${branch}`;
     } catch {
       return '# count loop error\n';
@@ -793,8 +974,9 @@ function registerMicroPythonHardware(gen) {
     const until = safeFieldValue(block, 'MODE', 'WHILE') === 'UNTIL';
     let cond = g.valueToCode(block, 'BOOL', Order.NONE) || 'False';
     if (until) cond = `(not (${cond}))`;
-    const branch = g.statementToCode(block, 'DO');
-    return `while ${cond}:\n${branch}`;
+    const branch = ensureSuiteOrFallback(g.statementToCode(block, 'DO'), 'time.sleep_ms(1)');
+    const sleepTick = `${g.INDENT}time.sleep_ms(1)\n`;
+    return `while ${cond}:\n${branch}${sleepTick}`;
   };
 
   gen.forBlock['controls_flow_statements'] = (block) => {
@@ -1138,8 +1320,9 @@ function registerMicroPythonHardware(gen) {
     const d1 = digitalGpio(block, 'D1', 2);
     const d2 = digitalGpio(block, 'D2', 4);
     const pwm = digitalGpio(block, 'PWM', 5);
-    gen.definitions_[`%mp_pin_${d1}`] = `pin${d1} = Pin(${d1}, Pin.OUT)  # motor ${mid} IN1\n`;
-    gen.definitions_[`%mp_pin_${d2}`] = `pin${d2} = Pin(${d2}, Pin.OUT)  # motor ${mid} IN2\n`;
+    void mid;
+    ensurePinOut(gen, d1);
+    ensurePinOut(gen, d2);
     ensurePwm(gen, pwm, 1000);
     return '';
   };
@@ -1182,6 +1365,8 @@ function registerMicroPythonHardware(gen) {
     return [warn, `pin${d1}.value(0)\n`, `pin${d2}.value(0)\n`, `pwm${pwm}.duty(0)\n`].join('');
   };
   gen.forBlock['mblock_servo_set'] = gen.forBlock['output_servo_write'];
+  gen.forBlock['motor_servo'] = gen.forBlock['output_servo_write'];
+  gen.forBlock['actuator_servo'] = gen.forBlock['output_servo_write'];
   gen.forBlock['mblock_relay_set'] = gen.forBlock['output_relay'];
 
   gen.forBlock['sensor_ultrasonic_mblock'] = gen.forBlock['sensor_ultrasonic_cm'];
@@ -1190,7 +1375,8 @@ function registerMicroPythonHardware(gen) {
     const n = digitalGpio(block, 'DPIN', 2);
     const st = safeFieldValue(block, 'DSTYPE', 'PIR');
     if (!gen.definitions_[`%mp_pin_${n}`]) ensurePinIn(gen, n);
-    return [`(pin${n}.value() == 1)  # digital sensor ${st}; use Pin.PULL_UP if active-low`, Order.ATOMIC];
+    void st;
+    return [`(pin${n}.value() == 1)`, Order.ATOMIC];
   };
   gen.forBlock['sensor_dht_mblock'] = (block, g) => {
     void g;
@@ -1198,12 +1384,17 @@ function registerMicroPythonHardware(gen) {
     if (fld === 'HUM') return gen.forBlock['sensor_dht_humidity'](block, g);
     return gen.forBlock['sensor_dht_temp'](block, g);
   };
+  gen.forBlock['sensor_bmp280_mblock'] = (_block, g) => {
+    void g;
+    return ["float('nan')", Order.ATOMIC];
+  };
   gen.forBlock['sensor_analog_mblock'] = (block, g) => {
     void g;
     const gpio = digitalGpio(block, 'APIN', 32);
     const tag = safeFieldValue(block, 'ASTYPE', 'LDR');
     ensureAdc(gen, gpio);
-    return [`adc${gpio}.read()  # ${tag}; ESP32: ADC1 pins preferred when Wi-Fi is on`, Order.ATOMIC];
+    void tag;
+    return [`adc${gpio}.read()`, Order.ATOMIC];
   };
 
   const mpIot = (msg) => `# IoT / app: ${msg}\n`;
@@ -1249,7 +1440,7 @@ function registerMicroPythonHardware(gen) {
     void g;
     const port = safeFieldValue(block, 'SERPORT', '0');
     if (port === '0') {
-      return ['False  # UART0 / REPL — use uart1.any() etc. after UART(1, ...) init', Order.ATOMIC];
+      return ['False', Order.ATOMIC];
     }
     return [`(uart${port}.any() > 0)`, Order.ATOMIC];
   };
@@ -1263,7 +1454,7 @@ function registerMicroPythonHardware(gen) {
   gen.forBlock['comm_serial_read_bytes'] = (block, g) => {
     void g;
     const port = safeFieldValue(block, 'SERPORT', '0');
-    if (port === '0') return ['0  # UART0/REPL', Order.ATOMIC];
+    if (port === '0') return ['0', Order.ATOMIC];
     return [`(uart${port}.read(1)[0] if uart${port}.any() else 0)`, Order.ATOMIC];
   };
   gen.forBlock['comm_serial_get_number'] = (block, g) => {
@@ -1290,46 +1481,31 @@ function registerMicroPythonHardware(gen) {
     return `uart${port}.write(${lit}.encode())\n`;
   };
 
-  const mpDabble = (msg) => `# Dabble / app: ${msg}\n`;
-  gen.forBlock['dabble_enable_servo'] = () => mpDabble('enable servo');
-  gen.forBlock['dabble_enable_motor'] = gen.forBlock['mblock_motor_connect'];
-  gen.forBlock['dabble_tactile_pressed'] = (block, g) => {
-    void g;
-    const n = digitalGpio(block, 'SW', 2);
-    if (!gen.definitions_[`%mp_pin_${n}`]) ensurePinIn(gen, n);
-    return [`(pin${n}.value() == 1)`, Order.ATOMIC];
-  };
-  gen.forBlock['dabble_slide_switch'] = (block, g) => {
-    void g;
-    const n = digitalGpio(block, 'SW', 2);
-    if (!gen.definitions_[`%mp_pin_${n}`]) ensurePinIn(gen, n);
-    const left = safeFieldValue(block, 'POS', 'LEFT') === 'LEFT';
-    return [`(pin${n}.value() == ${left ? 0 : 1})`, Order.ATOMIC];
-  };
-  gen.forBlock['dabble_pot_value'] = (block, g) => {
-    void g;
-    void fieldNumberBlock(block, 'PID', 1, 1, 4);
-    ensureAdc(gen, 32);
-    return ['adc32.read()', Order.ATOMIC];
-  };
+  const mpDabble = (msg) => `# Dabble phone bridge: not available in generated MicroPython — ${msg}\n`;
+  gen.forBlock['dabble_enable_servo'] = () => mpDabble('on ESP32 use Arduino + DabbleESP32 (Controls.runServo1/2)');
+  gen.forBlock['dabble_enable_motor'] = (block, g) =>
+    `${mpDabble('Dabble Motor module maps to Controls.runMotor* on ESP32 Arduino + DabbleESP32')}${gen.forBlock['mblock_motor_connect'](block, g)}`;
+  gen.forBlock['dabble_tactile_pressed'] = () => ['False', Order.ATOMIC];
+  gen.forBlock['dabble_slide_switch'] = () => ['False', Order.ATOMIC];
+  gen.forBlock['dabble_pot_value'] = () => ['0', Order.ATOMIC];
   gen.forBlock['dabble_phone_accel'] = () => ['0', Order.ATOMIC];
-  gen.forBlock['dabble_camera_setup'] = () => mpDabble('camera setup');
-  gen.forBlock['dabble_camera_rotate'] = () => mpDabble('camera rotate');
-  gen.forBlock['dabble_camera_capture'] = () => mpDabble('capture');
-  gen.forBlock['dabble_color_grid'] = () => mpDabble('color grid');
+  gen.forBlock['dabble_camera_setup'] = () => mpDabble('Camera.setParameters / flash / quality / zoom');
+  gen.forBlock['dabble_camera_rotate'] = () => mpDabble('Camera.flipTo');
+  gen.forBlock['dabble_camera_capture'] = () => mpDabble('Camera.captureImage');
+  gen.forBlock['dabble_color_grid'] = () => mpDabble('ColorDetector.sendSettings');
   gen.forBlock['dabble_color_cell'] = () => ['0', Order.ATOMIC];
-  gen.forBlock['dabble_bt_name'] = () => mpDabble('BT name');
-  gen.forBlock['dabble_refresh'] = () => mpDabble('refresh');
-  gen.forBlock['dabble_led_control'] = () => mpDabble('LED control');
+  gen.forBlock['dabble_bt_name'] = () => mpDabble('Dabble.begin(name)');
+  gen.forBlock['dabble_refresh'] = () => mpDabble('Dabble.processInput');
+  gen.forBlock['dabble_led_control'] = () => mpDabble('LedControl module');
   gen.forBlock['dabble_terminal_has_data'] = () => ['False', Order.ATOMIC];
   gen.forBlock['dabble_terminal_number'] = () => ['0.0', Order.ATOMIC];
   gen.forBlock['dabble_terminal_send'] = (block, g) => {
     void g;
-    return `print("${mblockPyStr(safeFieldValue(block, 'LINE', ''))}")\n`;
+    return `print("${mblockPyStr(safeFieldValue(block, 'LINE', ''))}")  # USB REPL only — not Dabble Terminal\n`;
   };
   gen.forBlock['dabble_gamepad_pressed'] = () => ['False', Order.ATOMIC];
   gen.forBlock['dabble_gamepad_value'] = () => ['0', Order.ATOMIC];
-  gen.forBlock['dabble_pin_monitor'] = () => mpDabble('pin monitor');
+  gen.forBlock['dabble_pin_monitor'] = () => mpDabble('PinMonitor.sendDigitalData / sendAnalogData');
 }
 
 function createMicroPythonGenerator() {
@@ -1426,12 +1602,27 @@ export function buildMicroPythonSketch(workspace) {
   })();
 
   const varsSection = decl ? `${IND}# — workspace variables —\n${indentPy(decl, IND)}\n` : '';
+  const servoSetupRaw = (() => {
+    try {
+      const entries = Object.entries(gen.__mpServoSetupInit || {});
+      if (!entries.length) return '';
+      return entries
+        .sort((a, b) => Number(a[0]) - Number(b[0]))
+        .map(([, code]) => String(code || ''))
+        .join('');
+    } catch {
+      return '';
+    }
+  })();
+  const servoSetupSection = servoSetupRaw
+    ? `${IND}# — servo pwm init —\n${indentPy(servoSetupRaw, IND)}\n`
+    : '';
 
   const setupWhen = `${IND}# — when board starts —\n`;
   const setupFromHat = String(setupRaw || '').trim()
     ? `${setupWhen}${indentPy(setupRaw, IND)}\n`
     : `${setupWhen}`;
-  const setupInner = `${varsSection}${setupFromHat}`;
+  const setupInner = `${varsSection}${servoSetupSection}${setupFromHat}`;
   const setupSection = mpyBlockHasExecutableLine(setupInner)
     ? setupInner
     : `${setupInner}${IND}pass\n`;
@@ -1448,7 +1639,7 @@ export function buildMicroPythonSketch(workspace) {
   }
 
   try {
-    const out = `${staticHead}\n${dyn}\n\ndef setup():\n${varsSection}${setupSection}\n\ndef loop():\n${loopBody}\n\nsetup()\nwhile True:\n${IND}loop()\n`;
+    const out = `${staticHead}\n${dyn}\n\ndef setup():\n${setupSection}\n\ndef loop():\n${loopBody}\n\nsetup()\nwhile True:\n${IND}loop()\n`;
     return out;
   } catch (e) {
     console.warn('[mpy] assemble', e);

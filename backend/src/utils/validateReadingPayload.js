@@ -65,9 +65,43 @@ export function validateReadingPayload(body) {
       }
       break;
     }
+    case 'pir': {
+      if (typeof d.motionDetected !== 'boolean') {
+        errors.push('data.motionDetected must be a boolean.');
+      }
+      break;
+    }
     case 'lm35': {
       if (!Number.isFinite(Number(d.temperature))) {
         errors.push('data.temperature must be a finite number.');
+      }
+      break;
+    }
+    case 'mq2': {
+      if (!Number.isFinite(Number(d.gasLevel))) {
+        errors.push('data.gasLevel must be a finite number.');
+      }
+      break;
+    }
+    case 'ldr': {
+      if (!Number.isFinite(Number(d.lightLevel))) {
+        errors.push('data.lightLevel must be a finite number.');
+      }
+      break;
+    }
+    case 'rain_sensor': {
+      if (!Number.isFinite(Number(d.rainLevel))) {
+        errors.push('data.rainLevel must be a finite number.');
+      }
+      break;
+    }
+    case 'bmp280': {
+      const t = Number(d.temperature);
+      const pr = Number(d.pressure);
+      const okT = Number.isFinite(t);
+      const okP = Number.isFinite(pr);
+      if (!okT && !okP) {
+        errors.push('data must include at least one finite number: temperature and/or pressure (hPa).');
       }
       break;
     }
@@ -133,6 +167,25 @@ export function validateReadingPayload(body) {
     case 'ir_sensor':
       normalizedData.irDetected = Boolean(d.irDetected);
       break;
+    case 'pir':
+      normalizedData.motionDetected = Boolean(d.motionDetected);
+      break;
+    case 'mq2':
+      normalizedData.gasLevel = Number(d.gasLevel);
+      break;
+    case 'ldr':
+      normalizedData.lightLevel = Number(d.lightLevel);
+      break;
+    case 'rain_sensor':
+      normalizedData.rainLevel = Number(d.rainLevel);
+      break;
+    case 'bmp280': {
+      const out = {};
+      if (Number.isFinite(Number(d.temperature))) out.temperature = Number(d.temperature);
+      if (Number.isFinite(Number(d.pressure))) out.pressure = Number(d.pressure);
+      normalizedData = out;
+      break;
+    }
     case 'custom': {
       const out = {};
       for (const k of Object.keys(d)) {

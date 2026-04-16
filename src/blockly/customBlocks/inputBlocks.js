@@ -18,7 +18,7 @@ export const inputBlockDefinitions = [
     inputsInline: true,
     output: 'Number',
     style: 'math_blocks',
-    tooltip: 'analogRead — Uno: A0–A5. ESP32: label maps to a typical ADC GPIO.',
+    tooltip: 'Analog read — A0–A5 style labels map to a typical ADC GPIO on ESP32.',
   },
   {
     type: 'input_ir_read',
