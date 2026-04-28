@@ -21,17 +21,17 @@ export default defineConfig({
     },
   },
   server: {
-    port: 5173,
-    strictPort: false, // if 5173 is busy, Vite tries the next free port — use the URL it prints
-    /** Listen on all interfaces so phones / other laptops on the same Wi‑Fi can open http://<your-LAN-IP>:5173 */
+    port: 8183,
+    strictPort: false, // if 8183 is busy, Vite tries the next free port — use the URL it prints
+    /** Listen on all interfaces so phones / other laptops on the same Wi‑Fi can open http://<your-LAN-IP>:8183 */
     host: true,
     proxy: {
       '/api': {
-        target: 'http://127.0.0.1:3847',
+        target: 'http://127.0.0.1:8184',
         changeOrigin: true,
       },
       '/socket.io': {
-        target: 'http://127.0.0.1:3847',
+        target: 'http://127.0.0.1:8184',
         changeOrigin: true,
         ws: true,
       },

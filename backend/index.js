@@ -9,7 +9,7 @@ import { getDb, initDb } from './db.js';
 import { JWT_SECRET } from './jwtSecret.js';
 import { setupSensorPlatform } from './src/sensorPlatform.js';
 
-const PORT = Number(process.env.PORT || 3847);
+const PORT = Number(process.env.PORT || 8184);
 const BCRYPT_ROUNDS = 12;
 
 const app = express();

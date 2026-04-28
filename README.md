@@ -6,9 +6,9 @@ Blockly editor for **ESP32** with **MicroPython** preview. **Connect, Upload, an
 
 This repo is **one website** (React) talking to **one Node server** (Express). You do **not** run two separate backends.
 
-1. **Frontend entry:** `index.html` loads **`src/main.jsx`**, which renders **`src/App.jsx`**. All UI, Blockly, and device pages live under **`src/`**. Static assets and example JSON live under **`public/`**. Vite serves the UI in dev (often port **5173**).
+1. **Frontend entry:** `index.html` loads **`src/main.jsx`**, which renders **`src/App.jsx`**. All UI, Blockly, and device pages live under **`src/`**. Static assets and example JSON live under **`public/`**. Vite serves the UI in dev (often port **8183**).
 2. **Backend entry:** **`server/index.js`** is what **`npm run server`** runs. That file creates the HTTP server, handles **sign-in** and **saved projects** (SQLite), and attaches the sensor API.
-3. **`server/` + `backend/src/` together:** **`server/index.js`** imports **`backend/src/sensorPlatform.js`**, which registers **device + readings routes** and **Socket.IO** on the **same** Express app. So **`server/`** = main API process and database helpers; **`backend/src/`** = sensor/readings module (routes, controllers, validation). Both run in **one process** on **one port** (default **3847**).
+3. **`server/` + `backend/src/` together:** **`server/index.js`** imports **`backend/src/sensorPlatform.js`**, which registers **device + readings routes** and **Socket.IO** on the **same** Express app. So **`server/`** = main API process and database helpers; **`backend/src/`** = sensor/readings module (routes, controllers, validation). Both run in **one process** on **one port** (default **8184**).
 4. **SQLite:** The local API stores data in **`server/data/`** (e.g. `ide.sqlite`). That folder is gitignored so your local DB is not committed.
 5. **Local development commands:** See **Install & run** and **Run with account projects** below. Short version: **`npm install`**, then **`npm run dev`** (UI only) or **`npm run dev:full`** (API + UI together).
 
@@ -63,7 +63,7 @@ npm install
 npm run dev
 ```
 
-Open the URL shown (often `http://localhost:5173`).
+Open the URL shown (often `http://localhost:8183`).
 
 ## Run with account projects (API + UI)
 
@@ -73,7 +73,7 @@ Saves **Open / Save / Save As** to a **SQLite** database per user when signed in
 npm run dev:full
 ```
 
-Or two terminals: `npm run server` (port **3847**) and `npm run dev`. Then **Settings → Sign up / Sign in**.
+Or two terminals: `npm run server` (port **8184**) and `npm run dev`. Then **Settings → Sign up / Sign in**.
 
 - Database file: `server/data/ide.sqlite` (Created automatically; listed in `.gitignore`.)
 - Production: set **`JWT_SECRET`** to a long random string. Optional: **`PORT`**.
