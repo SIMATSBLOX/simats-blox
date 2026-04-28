@@ -17,7 +17,8 @@ function LegacyDashboardDeviceRedirect() {
 }
 
 export default function App() {
-  const Router = import.meta.env.PROD ? HashRouter : BrowserRouter;
+  const isProd = import.meta.env.PROD;
+  const Router = isProd ? HashRouter : BrowserRouter;
 
   useEffect(() => {
     const unsubSupabase = initSupabaseAuth();
@@ -30,7 +31,7 @@ export default function App() {
   }, []);
 
   return (
-    <Router basename={import.meta.env.BASE_URL}>
+    <Router {...(isProd ? {} : { basename: import.meta.env.BASE_URL })}>
       <Routes>
         <Route path="/" element={<IDEPage />} />
         <Route
