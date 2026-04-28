@@ -1,5 +1,4 @@
 import { create } from 'zustand';
-import { isSupabaseConfigured } from '../lib/supabaseClient.js';
 
 /**
  * Supabase Auth session mirror (UI + services). Unrelated to Express JWT in authStore.js.
@@ -11,7 +10,7 @@ export const useCloudAuthStore = create((set) => ({
   session: null,
   /** @type {import('@supabase/supabase-js').User | null} */
   user: null,
-  authLoading: isSupabaseConfigured(),
+  authLoading: false,
   authError: /** @type {string | null} */ (null),
 
   /**

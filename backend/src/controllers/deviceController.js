@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 import { SENSOR_TYPES } from '../constants/sensorTypes.js';
-import { getSensorRepository } from '../../../server/repositories/getSensorRepository.js';
+import { getSensorRepository } from '../../repositories/getSensorRepository.js';
 
 const TYPE_SET = new Set(SENSOR_TYPES);
 

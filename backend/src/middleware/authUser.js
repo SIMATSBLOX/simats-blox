@@ -1,8 +1,7 @@
-import { verifyDashboardBearerToken } from '../../../server/dashboardJwt.js';
+import { verifyDashboardBearerToken } from '../../dashboardJwt.js';
 
 /**
- * JWT for device/dashboard APIs: Supabase access token (via auth.getUser) when URL + service role are set,
- * then legacy Express SQLite auth token.
+ * JWT for device/dashboard APIs using local backend tokens.
  */
 export async function authUserJwt(req, res, next) {
   const h = req.headers.authorization;

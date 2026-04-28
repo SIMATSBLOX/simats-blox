@@ -1,7 +1,6 @@
 import { io } from 'socket.io-client';
 import { getDashboardAccessToken } from '../lib/dashboardAuthToken.js';
 import { getSocketIoUrl } from '../lib/apiConfig.js';
-import { getSupabaseClient, isSupabaseConfigured } from '../lib/supabaseClient.js';
 
 /** @type {import('socket.io-client').Socket | null} */
 let socket = null;
@@ -14,7 +13,7 @@ let lastSocketUrl = null;
 let authHooksAttached = false;
 
 /**
- * Reconnect when Express or Supabase session changes (lazy to avoid circular import with authStore).
+ * Reconnect when local auth session changes (lazy to avoid circular import with authStore).
  */
 function ensureDashboardAuthHooks() {
   if (authHooksAttached) return;
@@ -26,18 +25,10 @@ function ensureDashboardAuthHooks() {
     });
   });
 
-  if (isSupabaseConfigured()) {
-    const sb = getSupabaseClient();
-    if (sb) {
-      sb.auth.onAuthStateChange(() => {
-        queueMicrotask(() => void connectSensorSocket());
-      });
-    }
-  }
 }
 
 /**
- * Ensures Socket.IO uses the same Bearer token as {@link ../api/readingApi.js} (Supabase first, then Express).
+ * Ensures Socket.IO uses the same Bearer token as REST API calls.
  */
 export async function connectSensorSocket() {
   if (typeof window === 'undefined') return null;

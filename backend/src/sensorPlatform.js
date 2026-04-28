@@ -1,9 +1,9 @@
 /**
- * Sensor data layer: SQLite tables + REST + Socket.IO.
- * Mounted on the main SIMATS BLOX HTTP server (shared port with SQLite auth API).
+ * Sensor data layer: MySQL tables + REST + Socket.IO.
+ * Mounted on the main SIMATS BLOX HTTP server (shared port with auth/projects API).
  */
 import { Server } from 'socket.io';
-import { verifyDashboardBearerToken } from '../../server/dashboardJwt.js';
+import { verifyDashboardBearerToken } from '../dashboardJwt.js';
 import { getSensorEnv } from './config/env.js';
 import { setSocketIO } from './services/socketService.js';
 import deviceRoutes from './routes/deviceRoutes.js';
@@ -51,10 +51,8 @@ export function setupSensorPlatform(httpServer, app) {
 
   setSocketIO(io);
 
-  console.log('[sensor] SQLite: sensor_devices, sensor_readings in server/data/ide.sqlite');
-  console.log(
-    '[sensor] Dashboard auth: Supabase getUser(access_token) when SUPABASE_URL + SERVICE_ROLE set; else Express JWT — REST + Socket',
-  );
+  console.log('[sensor] MySQL: sensor_devices, sensor_readings');
+  console.log('[sensor] Dashboard auth: Express JWT — REST + Socket');
   console.log('[sensor] POST /api/readings uses x-device-key (unchanged)');
   console.log(`[sensor] Socket.IO: join user:<sub> on connect; CORS origin: ${clientOrigin}`);
 }

@@ -1,6 +1,6 @@
 import { validateReadingPayload } from '../utils/validateReadingPayload.js';
 import { emitSensorUpdate } from '../services/socketService.js';
-import { getSensorRepository } from '../../../server/repositories/getSensorRepository.js';
+import { getSensorRepository } from '../../repositories/getSensorRepository.js';
 
 export async function receiveReading(req, res) {
   try {

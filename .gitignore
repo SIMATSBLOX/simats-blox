@@ -25,7 +25,8 @@ pnpm-debug.log*
 .env.local
 .env.*.local
 
-# Local SQLite (keep files on disk; not committed)
+# Local backend data/migration files (keep on disk; not committed)
+backend/data/
 server/data/
 
 # OS junk
@@ -38,6 +39,8 @@ __MACOSX/
 .turbo/
 .eslintcache
 *.tsbuildinfo
+__pycache__/
+*.pyc
 
 # IDE — allow committing .vscode/extensions.json if desired
 .idea/

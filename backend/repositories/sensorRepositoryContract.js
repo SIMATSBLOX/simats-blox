@@ -1,6 +1,6 @@
 /**
  * Sensor repository contract (JSDoc only — no runtime).
- * All methods return Promises (SQLite adapters resolve immediately; Supabase uses I/O).
+ * All methods return Promises.
  *
  * @typedef {{ ownerUserId: string; deviceId: string; sensorType: string }} SensorDeviceContext
  * @typedef {{ ok: true, sensorDevice: SensorDeviceContext } | { ok: false, error: 'device_not_found' | 'invalid_key' }} AuthenticateDeviceResult

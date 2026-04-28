@@ -1,4 +1,4 @@
-import { getSensorRepository } from '../../../server/repositories/getSensorRepository.js';
+import { getSensorRepository } from '../../repositories/getSensorRepository.js';
 
 /**
  * Expects JSON body with deviceId. Header x-device-key must match stored api_key.
