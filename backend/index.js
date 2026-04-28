@@ -105,7 +105,7 @@ app.post('/api/auth/signup', async (req, res) => {
 
   const id = crypto.randomUUID();
   const passwordHash = bcrypt.hashSync(password, BCRYPT_ROUNDS);
-  const createdAt = new Date().toISOString();
+  const createdAt = new Date();
 
   try {
     await db.execute('INSERT INTO users (id, login, password_hash, created_at) VALUES (?, ?, ?, ?)', [
@@ -246,7 +246,7 @@ app.post('/api/projects', authMiddleware, async (req, res) => {
   const desc = typeof description === 'string' ? description.slice(0, 2000) : '';
   const board = 'esp32';
   const id = crypto.randomUUID();
-  const updatedAt = new Date().toISOString();
+  const updatedAt = new Date();
   let blocklyJson;
   try {
     blocklyJson = JSON.stringify(blockly);
@@ -282,7 +282,7 @@ app.put('/api/projects/:id', authMiddleware, async (req, res) => {
   const name = String(projectName ?? 'Untitled project').slice(0, 200);
   const desc = typeof description === 'string' ? description.slice(0, 2000) : '';
   const board = 'esp32';
-  const updatedAt = new Date().toISOString();
+  const updatedAt = new Date();
   let blocklyJson;
   try {
     blocklyJson = JSON.stringify(blockly);

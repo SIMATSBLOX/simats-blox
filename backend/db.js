@@ -38,6 +38,14 @@ export async function initDb() {
     .map((s) => s.trim())
     .filter(Boolean);
   for (const statement of statements) {
-    await db.query(statement);
+    try {
+      await db.query(statement);
+    } catch (error) {
+      // Allow repeated startup on an existing schema (e.g. CREATE INDEX collisions).
+      if (error?.code === 'ER_DUP_KEYNAME') {
+        continue;
+      }
+      throw error;
+    }
   }
 }

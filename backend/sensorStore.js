@@ -46,7 +46,7 @@ export async function insertSensorDeviceAsync(p) {
   }
 
   const id = crypto.randomUUID();
-  const now = new Date().toISOString();
+  const now = new Date();
   await db.execute(
     `INSERT INTO sensor_devices (
       id, owner_user_id, device_id, name, sensor_type, location, api_key, status, last_seen_at, created_at, updated_at
@@ -138,7 +138,7 @@ export async function listSensorReadingsLogAsync(ownerUserId, deviceId, limit) {
 export async function insertSensorReadingAsync(p) {
   const db = await getDb();
   const id = crypto.randomUUID();
-  const now = new Date().toISOString();
+  const now = new Date();
   const dataJson = JSON.stringify(p.data);
 
   await db.execute(
@@ -176,7 +176,7 @@ export async function regenerateSensorDeviceApiKeyAsync(ownerUserId, deviceIdTri
   if (!row) return { ok: false };
 
   const newKey = crypto.randomBytes(32).toString('hex');
-  const now = new Date().toISOString();
+  const now = new Date();
   await db.execute('UPDATE sensor_devices SET api_key = ?, updated_at = ? WHERE id = ?', [newKey, now, row.id]);
   return { ok: true, apiKey: newKey };
 }

@@ -1397,6 +1397,38 @@ export default function TopToolbar({ workspace, previewCode = '', onAfterProject
                 </section>
               ) : null}
 
+              {!isDemoSupabaseOnly() ? (
+                <section className="mb-5">
+                  <div className="mb-2">
+                    <h3 className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Local API</h3>
+                    <p className="mt-0.5 text-[10px] text-studio-muted">
+                      {showExpressRemote
+                        ? 'Projects stored in your local MySQL server account.'
+                        : 'Sign in under Settings → Account (API) to load local API saves here.'}
+                    </p>
+                  </div>
+                  {!showExpressRemote ? (
+                    <div className="rounded-lg border border-dashed border-studio-border/55 bg-[#1e2228]/90 px-3 py-3.5 text-center text-[11px] text-slate-500">
+                      No API session — sign in to see local API projects.
+                    </div>
+                  ) : pickExLoading ? (
+                    <p className="py-3 text-center text-[11px] text-studio-muted">Loading local API projects…</p>
+                  ) : pickExError ? (
+                    <div className="rounded-lg border border-red-900/40 bg-red-950/25 px-3 py-2.5 text-[11px] text-red-200/90">
+                      {pickExError}
+                    </div>
+                  ) : pickExpressProjects.length === 0 ? (
+                    <div className="rounded-lg border border-dashed border-studio-border/55 bg-[#1e2228]/90 px-3 py-3.5 text-center text-[11px] text-slate-500">
+                      No API projects yet. Use <span className="text-slate-400">File → Save (API)</span> to create one.
+                    </div>
+                  ) : (
+                    <ul className="space-y-2">
+                      {pickExpressProjects.map((p) => renderRemoteProjectCard(p, 'express_api'))}
+                    </ul>
+                  )}
+                </section>
+              ) : null}
+
               <section>
                 <div className="mb-2">
                   <h3 className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">This browser</h3>
