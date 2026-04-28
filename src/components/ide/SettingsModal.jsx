@@ -2,6 +2,7 @@ import { useState } from 'react';
 import Button from '../ui/Button.jsx';
 import { BOARD_LABEL } from '../../store/ideStore.js';
 import { useCloudAuthStore } from '../../store/cloudAuthStore.js';
+import { useAuthStore } from '../../store/authStore.js';
 import { isSupabaseConfigured } from '../../lib/supabaseClient.js';
 import * as supabaseAuth from '../../lib/authService.js';
 import { toast } from '../../lib/toast.js';
@@ -53,12 +54,20 @@ export default function SettingsModal({ open, onClose }) {
   const sbUser = useCloudAuthStore((s) => s.user);
   const sbLoading = useCloudAuthStore((s) => s.authLoading);
   const sbStoreError = useCloudAuthStore((s) => s.authError);
+  const expressLogin = useAuthStore((s) => s.login);
+  const expressAuthenticated = useAuthStore((s) => s.isAuthenticated);
 
   const [sbMode, setSbMode] = useState(/** @type {'in' | 'up'} */ ('in'));
   const [sbEmail, setSbEmail] = useState('');
   const [sbPassword, setSbPassword] = useState('');
   const [sbConfirm, setSbConfirm] = useState('');
   const [sbFormError, setSbFormError] = useState('');
+  const [apiMode, setApiMode] = useState(/** @type {'in' | 'up'} */ ('in'));
+  const [apiLogin, setApiLogin] = useState('');
+  const [apiPassword, setApiPassword] = useState('');
+  const [apiConfirm, setApiConfirm] = useState('');
+  const [apiFormError, setApiFormError] = useState('');
+  const [apiBusy, setApiBusy] = useState(false);
 
   if (!open) return null;
 
@@ -114,6 +123,51 @@ export default function SettingsModal({ open, onClose }) {
     }
   };
 
+  const submitApiAuth = async () => {
+    setApiFormError('');
+    const login = apiLogin.trim();
+    const password = apiPassword;
+    if (!login || !password) {
+      setApiFormError('Enter username/email and password.');
+      return;
+    }
+    if (apiMode === 'up') {
+      if (password.length < 6) {
+        setApiFormError('Password must be at least 6 characters.');
+        return;
+      }
+      if (password !== apiConfirm) {
+        setApiFormError('Passwords do not match.');
+        return;
+      }
+    }
+    setApiBusy(true);
+    try {
+      const auth = useAuthStore.getState();
+      if (apiMode === 'up') {
+        await auth.signUp(login, password);
+        toast('success', 'SIMATS account created and signed in.');
+      } else {
+        await auth.signIn(login, password);
+        toast('success', 'Signed in to SIMATS account.');
+      }
+      setApiPassword('');
+      setApiConfirm('');
+      setApiFormError('');
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setApiFormError(msg);
+      toast('error', msg);
+    } finally {
+      setApiBusy(false);
+    }
+  };
+
+  const handleApiSignOut = () => {
+    useAuthStore.getState().signOut();
+    toast('success', 'Signed out.');
+  };
+
   const inputCls =
     'w-full rounded border border-studio-border bg-[#1b1f24] px-2 py-1.5 text-xs text-slate-100 focus:border-studio-accent/60 focus:outline-none focus:ring-1 focus:ring-studio-accent/30';
 
@@ -161,6 +215,101 @@ export default function SettingsModal({ open, onClose }) {
                           Supabase (see README).
                         </p>
                       </SecondaryDetails>
+                      <div className="mt-3 rounded-md border border-studio-border/60 bg-[#1e2228]/85 p-2.5">
+                        <p className="text-[11px] font-medium text-slate-300">SIMATS account (API)</p>
+                        <p className="mt-0.5 text-[10px] text-studio-muted">
+                          Sign in with your API account to access Devices and sensor dashboard data.
+                        </p>
+                        {expressAuthenticated ? (
+                          <div className="mt-2">
+                            <p className="text-[11px] text-emerald-200/90">Signed in as {expressLogin ?? 'account'}</p>
+                            <div className="mt-2">
+                              <Button variant="default" className="!text-xs" type="button" onClick={handleApiSignOut}>
+                                Sign out
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="mt-2 space-y-2">
+                            <div className="flex gap-1.5">
+                              <button
+                                type="button"
+                                className={`rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors ${
+                                  apiMode === 'in'
+                                    ? 'bg-emerald-900/45 text-slate-100'
+                                    : 'text-studio-muted hover:bg-white/5'
+                                }`}
+                                onClick={() => {
+                                  setApiMode('in');
+                                  setApiFormError('');
+                                }}
+                              >
+                                Sign in
+                              </button>
+                              <button
+                                type="button"
+                                className={`rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors ${
+                                  apiMode === 'up'
+                                    ? 'bg-emerald-900/45 text-slate-100'
+                                    : 'text-studio-muted hover:bg-white/5'
+                                }`}
+                                onClick={() => {
+                                  setApiMode('up');
+                                  setApiFormError('');
+                                }}
+                              >
+                                Sign up
+                              </button>
+                            </div>
+                            <label className="block text-[10px] text-studio-muted" htmlFor="api-login">
+                              Username / email
+                            </label>
+                            <input
+                              id="api-login"
+                              type="text"
+                              autoComplete="username"
+                              value={apiLogin}
+                              onChange={(e) => setApiLogin(e.target.value)}
+                              className={inputCls}
+                            />
+                            <label className="block text-[10px] text-studio-muted" htmlFor="api-password">
+                              Password
+                            </label>
+                            <input
+                              id="api-password"
+                              type="password"
+                              autoComplete={apiMode === 'up' ? 'new-password' : 'current-password'}
+                              value={apiPassword}
+                              onChange={(e) => setApiPassword(e.target.value)}
+                              className={inputCls}
+                            />
+                            {apiMode === 'up' ? (
+                              <>
+                                <label className="block text-[10px] text-studio-muted" htmlFor="api-confirm">
+                                  Confirm password
+                                </label>
+                                <input
+                                  id="api-confirm"
+                                  type="password"
+                                  autoComplete="new-password"
+                                  value={apiConfirm}
+                                  onChange={(e) => setApiConfirm(e.target.value)}
+                                  className={inputCls}
+                                />
+                              </>
+                            ) : null}
+                            {apiFormError ? <p className="text-[11px] text-red-300/90">{apiFormError}</p> : null}
+                            <Button
+                              variant="primary"
+                              className="!text-xs"
+                              disabled={apiBusy}
+                              onClick={() => void submitApiAuth()}
+                            >
+                              {apiBusy ? 'Please wait…' : apiMode === 'up' ? 'Create account' : 'Sign in'}
+                            </Button>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   ) : sbUser ? (
                     <div>
