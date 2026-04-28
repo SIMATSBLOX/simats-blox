@@ -33,6 +33,8 @@ jobs:
 
       - name: Build frontend
         run: npm run build
+        env:
+          VITE_API_URL: https://simats-blox-api.onrender.com
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
