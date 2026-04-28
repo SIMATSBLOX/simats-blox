@@ -2,57 +2,50 @@
   "version": 1,
   "projectName": "Example: DHT11 temperature & humidity",
   "boardId": "esp32",
-  "description": "DHT11 on GPIO15. Preview uses machine/dht-style helpers; allow 2 s between reads. Change the pin if your wiring differs.",
+  "description": "DHT11 data pin GPIO2. Optional I2C OLED/LCD (SDA21/SCL22) mirrors Serial. Allow ≥2 s between reads; one merged serial line for Devices bridge.",
   "blockly": {
     "blocks": {
       "languageVersion": 0,
       "blocks": [
         {
           "type": "esp32_when_starts",
-          "id": "Cy[ZCVqQd_)28Z3R@=f%",
+          "id": "DD$KzA},J(1TZ7`ZJ8%y",
           "x": 20,
           "y": 20,
           "next": {
             "block": {
               "type": "comm_serial_begin",
-              "id": "sL`n1ao11#QAdzUl,vmk",
+              "id": "j$+Zuo2O#tce!O?/nCBF",
               "fields": {
                 "BAUD": 115200
               },
               "next": {
                 "block": {
-                  "type": "hw_forever",
-                  "id": ")J;./Vtox=}lxx[Wi7rT",
-                  "inputs": {
-                    "DO": {
-                      "block": {
-                        "type": "comm_serial_println",
-                        "id": ":`Z^@f8dhtgiVH0B|?S{",
-                        "inputs": {
-                          "VAL": {
-                            "block": {
-                              "type": "sensor_dht_mblock",
-                              "id": "Wm6wH_F=Wm}h+:AxwLmw",
-                              "fields": {
-                                "DHTFIELD": "TEMP",
-                                "DPIN": 15,
-                                "TYPE": "DHT11"
-                              }
-                            }
-                          }
-                        },
-                        "next": {
+                  "type": "mp_display_i2c_setup",
+                  "id": "gwg7[hQ_*pfOBu9dpw:h",
+                  "fields": {
+                    "W": 128,
+                    "H": 64,
+                    "SCL": 22,
+                    "SDA": 21
+                  },
+                  "next": {
+                    "block": {
+                      "type": "hw_forever",
+                      "id": ")XS[d.I,w:_(TBOI^UhN",
+                      "inputs": {
+                        "DO": {
                           "block": {
                             "type": "comm_serial_println",
-                            "id": "ip5e9/Ax^k:7$$yLVEFN",
+                            "id": "c{]TFQg~ChTMMJ/PUR|a",
                             "inputs": {
                               "VAL": {
                                 "block": {
                                   "type": "sensor_dht_mblock",
-                                  "id": "J[Z)TAG}%244#u5xs#[,",
+                                  "id": "YA=TN.`vyvu%i7PcnZc/",
                                   "fields": {
-                                    "DHTFIELD": "HUM",
-                                    "DPIN": 15,
+                                    "DHTFIELD": "TEMP",
+                                    "DPIN": 2,
                                     "TYPE": "DHT11"
                                   }
                                 }
@@ -60,10 +53,29 @@
                             },
                             "next": {
                               "block": {
-                                "type": "hw_wait",
-                                "id": "hqBK/l7|BLq^a?+5|6r;",
-                                "fields": {
-                                  "MS": 2000
+                                "type": "comm_serial_println",
+                                "id": "I:d?n3?9==F_3_{cgaf~",
+                                "inputs": {
+                                  "VAL": {
+                                    "block": {
+                                      "type": "sensor_dht_mblock",
+                                      "id": "wx[j+PHyNmdrY*3xIc2`",
+                                      "fields": {
+                                        "DHTFIELD": "HUM",
+                                        "DPIN": 2,
+                                        "TYPE": "DHT11"
+                                      }
+                                    }
+                                  }
+                                },
+                                "next": {
+                                  "block": {
+                                    "type": "hw_wait",
+                                    "id": "$KXd5S}~IHG9aT)gCZ~t",
+                                    "fields": {
+                                      "MS": 2000
+                                    }
+                                  }
                                 }
                               }
                             }

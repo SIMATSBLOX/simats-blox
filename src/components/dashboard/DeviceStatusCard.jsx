@@ -5,7 +5,7 @@ import LiveStatCard from './LiveStatCard.jsx';
 import DeviceHardwareSampleCode from './DeviceHardwareSampleCode.jsx';
 import { deleteDevice } from '../../api/readingApi.js';
 import { getStoredDeviceApiKey } from '../../lib/deviceKeyStorage.js';
-import { DEVICE_OFFLINE_AFTER_MS, getDevicePresence } from '../../lib/devicePresence.js';
+import { deviceOfflineIdleHint, getDevicePresence } from '../../lib/devicePresence.js';
 import { formatSensorValue, getDashboardFieldDefs } from '../../lib/sensorDashboardConfig.js';
 import {
   CUSTOM_SENSOR_TYPE,
@@ -60,10 +60,7 @@ export default function DeviceStatusCard({ device, latest, onDeviceDeleted, onAf
   const subtitleLine = subtitleParts.join(' · ') || null;
 
   const presence = getDevicePresence(device, latest);
-  const idleHint =
-    DEVICE_OFFLINE_AFTER_MS >= 60_000
-      ? `${Math.round(DEVICE_OFFLINE_AFTER_MS / 60_000)} min`
-      : `${Math.round(DEVICE_OFFLINE_AFTER_MS / 1000)} s`;
+  const idleHint = deviceOfflineIdleHint();
 
   async function handleDelete() {
     if (deleting) return;

@@ -5,8 +5,8 @@
     "boardId": "esp32"
   },
   {
-    "file": "serial-basic-esp32.json",
-    "label": "Serial / print (basic)",
+    "file": "neopixel-esp32.json",
+    "label": "NeoPixel strip",
     "boardId": "esp32"
   },
   {
@@ -15,8 +15,13 @@
     "boardId": "esp32"
   },
   {
-    "file": "lm35-esp32.json",
-    "label": "LM35 analog temperature",
+    "file": "ir-obstacle-esp32.json",
+    "label": "IR obstacle sensor",
+    "boardId": "esp32"
+  },
+  {
+    "file": "soil-moisture-esp32.json",
+    "label": "Soil moisture",
     "boardId": "esp32"
   },
   {
@@ -25,48 +30,48 @@
     "boardId": "esp32"
   },
   {
-    "file": "pir-hcsr501-esp32.json",
-    "label": "PIR HC-SR501 motion",
-    "boardId": "esp32"
-  },
-  {
-    "file": "ldr-esp32.json",
-    "label": "LDR light sensor",
+    "file": "servo-sweep-esp32.json",
+    "label": "Servo motor",
     "boardId": "esp32"
   },
   {
     "file": "ultrasonic-esp32.json",
-    "label": "HC-SR04 ultrasonic distance",
+    "label": "HC-SR04 ultrasonic",
     "boardId": "esp32"
   },
   {
-    "file": "bmp280-esp32.json",
-    "label": "BMP280 (I2C)",
+    "file": "pir-hcsr501-esp32.json",
+    "label": "PIR HC-SR501",
     "boardId": "esp32"
   },
   {
-    "file": "soil-moisture-esp32.json",
-    "label": "Soil moisture sensor",
+    "file": "lcd-print-esp32.json",
+    "label": "LCD (I2C)",
     "boardId": "esp32"
   },
   {
-    "file": "rain-sensor-esp32.json",
-    "label": "Rain sensor module",
+    "file": "touch-sensor-esp32.json",
+    "label": "Touch sensor",
     "boardId": "esp32"
   },
   {
-    "file": "ir-obstacle-esp32.json",
-    "label": "IR obstacle avoidance",
+    "file": "max30102-esp32.json",
+    "label": "MAX30102",
     "boardId": "esp32"
   },
   {
-    "file": "servo-sweep-esp32.json",
-    "label": "Servo sweep",
+    "file": "all-sensors-lcd-esp32.json",
+    "label": "All sensors + LCD",
     "boardId": "esp32"
   },
   {
-    "file": "motor-l298n-esp32.json",
-    "label": "DC motor (L298N-style)",
+    "file": "relay-control-esp32.json",
+    "label": "Relay control",
+    "boardId": "esp32"
+  },
+  {
+    "file": "serial-basic-esp32.json",
+    "label": "Serial / print (basic)",
     "boardId": "esp32"
   }
 ]

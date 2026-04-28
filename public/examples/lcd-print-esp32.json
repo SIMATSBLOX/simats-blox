@@ -1,0 +1,100 @@
+{
+  "version": 1,
+  "projectName": "Example: LCD print (16x2)",
+  "boardId": "esp32",
+  "description": "MODE 1: steady title on line 1. MODE 2: second message rotates every 2 s (print mirror; I2C init once before loop).",
+  "blockly": {
+    "blocks": {
+      "languageVersion": 0,
+      "blocks": [
+        {
+          "type": "esp32_when_starts",
+          "id": "Xn~xDfJiS|G1)a~St+jx",
+          "x": 20,
+          "y": 20,
+          "next": {
+            "block": {
+              "type": "comm_serial_begin",
+              "id": "^O^aUu`A2i}bs1*rY#A`",
+              "fields": {
+                "BAUD": 115200
+              },
+              "next": {
+                "block": {
+                  "type": "mp_display_i2c_setup",
+                  "id": "/m0^}D4ge`{P6mTJr^~;",
+                  "fields": {
+                    "W": 128,
+                    "H": 64,
+                    "SCL": 22,
+                    "SDA": 21
+                  },
+                  "next": {
+                    "block": {
+                      "type": "hw_forever",
+                      "id": "`)_jnF9*ti+,{2;tEhGf",
+                      "inputs": {
+                        "DO": {
+                          "block": {
+                            "type": "comm_serial_println",
+                            "id": "Y7*g4m^[-=s-TpnxiQ`n",
+                            "inputs": {
+                              "VAL": {
+                                "block": {
+                                  "type": "text",
+                                  "id": ";Dek`bSA|KoQP@!i2r7^",
+                                  "fields": {
+                                    "TEXT": "SIMATS BLOX"
+                                  }
+                                }
+                              }
+                            },
+                            "next": {
+                              "block": {
+                                "type": "hw_wait",
+                                "id": "ky1$P-rII2c22PYW[K=H",
+                                "fields": {
+                                  "MS": 2000
+                                },
+                                "next": {
+                                  "block": {
+                                    "type": "comm_serial_println",
+                                    "id": "nqiHQ),`lR-uFRF1Nd1A",
+                                    "inputs": {
+                                      "VAL": {
+                                        "block": {
+                                          "type": "text",
+                                          "id": ":`QQ,Hx15ut#rM3P`]L%",
+                                          "fields": {
+                                            "TEXT": "LCD view 2 (rotate)"
+                                          }
+                                        }
+                                      }
+                                    },
+                                    "next": {
+                                      "block": {
+                                        "type": "hw_wait",
+                                        "id": "/?/cCd!?}Vv8F9|lSI9c",
+                                        "fields": {
+                                          "MS": 2000
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

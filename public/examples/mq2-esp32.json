@@ -2,50 +2,62 @@
   "version": 1,
   "projectName": "Example: MQ-2 gas sensor (analog)",
   "boardId": "esp32",
-  "description": "MQ-2 analog out → GPIO32 (ADC1). Raw ADC depends on wiring and heater warmup; calibrate in your lesson.",
+  "description": "MQ-2 analog out → GPIO32 (ADC1). Optional I2C OLED/LCD mirrors gas level lines. Warm up sensor; calibrate thresholds for your module.",
   "blockly": {
     "blocks": {
       "languageVersion": 0,
       "blocks": [
         {
           "type": "esp32_when_starts",
-          "id": "gM`q]cA3O)4{?6A}S~-K",
+          "id": "{FX%0p~swq=%u[cd,^PZ",
           "x": 20,
           "y": 20,
           "next": {
             "block": {
               "type": "comm_serial_begin",
-              "id": "B7W179mBTVB``JmxFRlt",
+              "id": "RWVZt)}OyQw+%_`#HC*e",
               "fields": {
                 "BAUD": 115200
               },
               "next": {
                 "block": {
-                  "type": "hw_forever",
-                  "id": "=[%[3Ghiq#jd(Y1_PT)3",
-                  "inputs": {
-                    "DO": {
-                      "block": {
-                        "type": "comm_serial_println",
-                        "id": "p#JE^mh(b0:?q60;qAFl",
-                        "inputs": {
-                          "VAL": {
-                            "block": {
-                              "type": "sensor_analog_mblock",
-                              "id": "4htH}a+$ZK]6e{Ntb}2+",
-                              "fields": {
-                                "ASTYPE": "GAS",
-                                "APIN": 32
-                              }
-                            }
-                          }
-                        },
-                        "next": {
+                  "type": "mp_display_i2c_setup",
+                  "id": "n;5-^$-srj1;z:^R@^ra",
+                  "fields": {
+                    "W": 128,
+                    "H": 64,
+                    "SCL": 22,
+                    "SDA": 21
+                  },
+                  "next": {
+                    "block": {
+                      "type": "hw_forever",
+                      "id": "BPR6zzeey4*!L}gkf9iJ",
+                      "inputs": {
+                        "DO": {
                           "block": {
-                            "type": "hw_wait",
-                            "id": "6)grR]Kr$YKTInut[!~y",
-                            "fields": {
-                              "MS": 1000
+                            "type": "comm_serial_println",
+                            "id": "uFFfrnh^pIW-1xK)-_L`",
+                            "inputs": {
+                              "VAL": {
+                                "block": {
+                                  "type": "sensor_analog_mblock",
+                                  "id": "=+.mzklNP:X}srsY]]|T",
+                                  "fields": {
+                                    "ASTYPE": "GAS",
+                                    "APIN": 32
+                                  }
+                                }
+                              }
+                            },
+                            "next": {
+                              "block": {
+                                "type": "hw_wait",
+                                "id": "TH$4[v1#LEI/p0`)1?a=",
+                                "fields": {
+                                  "MS": 500
+                                }
+                              }
                             }
                           }
                         }

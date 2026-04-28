@@ -9,10 +9,10 @@ import {
 export const boardBlockDefinitions = [
   {
     type: 'board_when_starts',
-    message0: 'when board starts',
+    message0: 'when board starts (legacy)',
     nextStatement: {},
     style: 'hat_blocks',
-    tooltip: 'Runs once at boot. Put pinMode, Serial.begin, and one-time setup here.',
+    tooltip: 'Legacy hat for old projects. Prefer “when ESP32 starts” for new programs.',
   },
   {
     type: 'board_delay',

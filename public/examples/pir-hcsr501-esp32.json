@@ -2,58 +2,70 @@
   "version": 1,
   "projectName": "Example: PIR motion HC-SR501",
   "boardId": "esp32",
-  "description": "HC-SR501 OUT → GPIO27 as INPUT. Prints Detection: 1/0 every 300 ms.",
+  "description": "PIR OUT → GPIO23 (INPUT). Optional I2C OLED/LCD mirrors Serial. GPIO27 reserved for IR in kit wiring. Detection: 1/0 for serial bridge.",
   "blockly": {
     "blocks": {
       "languageVersion": 0,
       "blocks": [
         {
           "type": "esp32_when_starts",
-          "id": "K[_.,H7CD@u?$8b%MI1G",
+          "id": "/9ev2Hu!X_iz[~i(nR*{",
           "x": 20,
           "y": 20,
           "next": {
             "block": {
               "type": "comm_serial_begin",
-              "id": ")TBbgH`XNQ9,%%Bgk8hR",
+              "id": "]g(rg)%4Zavj?-pB6Zy+",
               "fields": {
                 "BAUD": 115200
               },
               "next": {
                 "block": {
-                  "type": "board_pin_mode",
-                  "id": "bs3KfmaQ^YZhWaPuB^;w",
+                  "type": "mp_display_i2c_setup",
+                  "id": "/?uin@0n#x0k]Q,m!Cz`",
                   "fields": {
-                    "DPIN": 27,
-                    "MODE": "INPUT"
+                    "W": 128,
+                    "H": 64,
+                    "SCL": 22,
+                    "SDA": 21
                   },
                   "next": {
                     "block": {
-                      "type": "hw_forever",
-                      "id": "(IBq%Bl})V!JeHaAjjn6",
-                      "inputs": {
-                        "DO": {
-                          "block": {
-                            "type": "comm_serial_println",
-                            "id": "{As9[ZPettIEx6u`[,0P",
-                            "inputs": {
-                              "VAL": {
-                                "block": {
-                                  "type": "sensor_digital_mblock",
-                                  "id": "RW{.-oK-tTkWuOI+^*8d",
-                                  "fields": {
-                                    "DSTYPE": "PIR",
-                                    "DPIN": 27
-                                  }
-                                }
-                              }
-                            },
-                            "next": {
+                      "type": "board_pin_mode",
+                      "id": "gw[O=0j:N9w$v;F|y^#D",
+                      "fields": {
+                        "DPIN": 23,
+                        "MODE": "INPUT"
+                      },
+                      "next": {
+                        "block": {
+                          "type": "hw_forever",
+                          "id": "yMePa#L_W?q26x2w4AFR",
+                          "inputs": {
+                            "DO": {
                               "block": {
-                                "type": "hw_wait",
-                                "id": "zOR/x9Co*-Vg=ZVL*l/h",
-                                "fields": {
-                                  "MS": 300
+                                "type": "comm_serial_println",
+                                "id": "b+%G}nSYjL$oLHbL3GPd",
+                                "inputs": {
+                                  "VAL": {
+                                    "block": {
+                                      "type": "sensor_digital_mblock",
+                                      "id": "J*]-Y,rOA;90p{c2_g2Q",
+                                      "fields": {
+                                        "DSTYPE": "PIR",
+                                        "DPIN": 23
+                                      }
+                                    }
+                                  }
+                                },
+                                "next": {
+                                  "block": {
+                                    "type": "hw_wait",
+                                    "id": "AGD/|;a5y?]hL:bNY,@H",
+                                    "fields": {
+                                      "MS": 500
+                                    }
+                                  }
                                 }
                               }
                             }

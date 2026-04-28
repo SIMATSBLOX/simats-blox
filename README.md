@@ -1,6 +1,6 @@
 # SIMATS BLOX (hardware block IDE)
 
-Blockly editor for Arduino Uno (C++ preview) and ESP32 (MicroPython preview). **Connect, Upload, and serial are UI placeholders** — blocks and generated code only.
+Blockly editor for **ESP32** with **MicroPython** preview. **Connect, Upload, and serial** may be partial or placeholder depending on the screen — blocks and generated code are the source of truth.
 
 ## Architecture (quick overview)
 

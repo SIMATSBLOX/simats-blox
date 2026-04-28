@@ -42,7 +42,7 @@ body {
 }
 
 .blockly-studio-host .blockly-studio-control-wrap--zoom {
-  transform: scale(0.8);
+  transform: scale(0.95);
   transform-origin: right top;
   transform-box: fill-box;
 }
@@ -57,15 +57,16 @@ body {
 }
 
 .blockly-studio-host .blocklyZoom > image {
-  opacity: 0.3 !important;
+  opacity: 0.78 !important;
+  filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.5));
 }
 
 .blockly-studio-host .blocklyZoom:hover > image {
-  opacity: 0.48 !important;
+  opacity: 0.95 !important;
 }
 
 .blockly-studio-host .blocklyZoom:active > image {
-  opacity: 0.64 !important;
+  opacity: 1 !important;
 }
 
 /* Flyout section headers — clearer scan lines (block bodies sized by Zelos + theme) */

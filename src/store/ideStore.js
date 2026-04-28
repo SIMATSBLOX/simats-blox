@@ -97,8 +97,8 @@ export const BOARD_LABEL = {
   esp32: 'ESP32 · MicroPython',
 };
 
-/** Presets for Web Serial `port.open({ baudRate })`. */
-export const SERIAL_BAUD_PRESETS = /** @type {const} */ ([9600, 115200, 57600, 38400]);
+/** Web Serial `port.open({ baudRate })` for ESP32 MicroPython USB REPL (product is ESP32-only). */
+export const ESP32_USB_SERIAL_BAUD = 115200;
 
 export const useIdeStore = create((set, get) => ({
   projectName: 'Untitled hardware project',
@@ -121,8 +121,8 @@ export const useIdeStore = create((set, get) => ({
   connectState: /** @type {'disconnected' | 'connecting' | 'connected'} */ ('disconnected'),
   /** Increment to ask ConsolePanel to switch to the Serial Monitor tab (e.g. toolbar Terminal). */
   serialTabFocusKey: 0,
-  /** Used for the next Web Serial `open()` (change requires Disconnect → Connect while connected). */
-  serialBaudRate: 9600,
+  /** Fixed for ESP32 MicroPython USB; Web Serial `open({ baudRate })`. */
+  serialBaudRate: ESP32_USB_SERIAL_BAUD,
   /**
    * True while connect/disconnect is in flight or any multi-step serial write runs (upload, send, MP stop/run).
    * Keeps Send / Stop / Run again / Upload from overlapping.
@@ -134,11 +134,6 @@ export const useIdeStore = create((set, get) => ({
       id: '2',
       level: 'info',
       text: 'Connect (Chrome / Edge / Opera) opens USB serial. Upload writes MicroPython to main.py on ESP32 when connected.',
-    },
-    {
-      id: '3',
-      level: 'info',
-      text: 'Signed in to Supabase: Save uses cloud (ide_projects). Signed in to local API: Save uses npm run server. Otherwise Save uses this browser only. Export Project always downloads a .json file.',
     },
   ],
   serialLines: [],
@@ -168,13 +163,8 @@ export const useIdeStore = create((set, get) => ({
 
   focusSerialMonitorTab: () => set((s) => ({ serialTabFocusKey: s.serialTabFocusKey + 1 })),
 
-  /** @param {number} rate */
-  setSerialBaudRate: (rate) => {
-    const n = Number(rate);
-    set({
-      serialBaudRate: SERIAL_BAUD_PRESETS.includes(n) ? n : 9600,
-    });
-  },
+  /** @param {number} [_rate] Kept for compatibility; baud is fixed at {@link ESP32_USB_SERIAL_BAUD}. */
+  setSerialBaudRate: (_rate) => set({ serialBaudRate: ESP32_USB_SERIAL_BAUD }),
 
   setSerialPipelineBusy: (serialPipelineBusy) => set({ serialPipelineBusy: !!serialPipelineBusy }),
 

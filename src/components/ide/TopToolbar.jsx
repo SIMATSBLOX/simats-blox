@@ -3,11 +3,11 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Activity,
   ChevronDown,
+  Info,
   LayoutDashboard,
   Redo2,
   Save,
   Settings,
-  Terminal,
   Undo2,
   UploadCloud,
   Usb,
@@ -72,7 +72,6 @@ import {
   exportCodeMenuItemTitle,
   exportCodeSuccessToast,
   exportToolbarMenuTitle,
-  openSerialMonitorTitle,
   serialConnectButtonTitle,
   serialConnectedLogLine,
   uploadButtonTitle,
@@ -127,9 +126,8 @@ export default function TopToolbar({ workspace, previewCode = '', onAfterProject
   const [pickExError, setPickExError] = useState(/** @type {string | null} */ (null));
 
   const projectName = useIdeStore((s) => s.projectName);
-  const setProjectName = useIdeStore((s) => s.setProjectName);
   const description = useIdeStore((s) => s.description);
-  const setDescription = useIdeStore((s) => s.setDescription);
+  const setProjectName = useIdeStore((s) => s.setProjectName);
   const resetForNewSketch = useIdeStore((s) => s.resetForNewSketch);
   const browserProjectId = useIdeStore((s) => s.browserProjectId);
   const setBrowserProjectId = useIdeStore((s) => s.setBrowserProjectId);
@@ -392,12 +390,11 @@ export default function TopToolbar({ workspace, previewCode = '', onAfterProject
       unlinkFromCloudSave();
       const exTitle = check.data.projectName ?? file;
       appendLog('info', `Loaded example: ${exTitle} — toolbar title and notes updated from the example.`);
-      if (check.data.description) appendLog('info', String(check.data.description));
       appendLog(
         'info',
         'Tip: examples are not linked to Save — use Save or Save As to store your own copy (title and notes are saved with the project).',
       );
-      toast('success', `Example loaded — “${exTitle}” (edit title or notes anytime; they save with the project).`);
+      toast('success', `Example loaded — “${exTitle}”.`);
       onAfterProjectImport?.();
     } catch (e) {
       const err = formatUserSafeError(e);
@@ -1006,28 +1003,12 @@ export default function TopToolbar({ workspace, previewCode = '', onAfterProject
               Export Workspace XML…
             </button>
           </ToolbarMenu>
-          <ToolbarMenu label="Edit">
-            <button
-              type="button"
-              className="menu-item"
-              onClick={() => {
-                workspace?.undo(false);
-              }}
-            >
-              Undo
-            </button>
-            <button
-              type="button"
-              className="menu-item"
-              onClick={() => {
-                workspace?.undo(true);
-              }}
-            >
-              Redo
-            </button>
-          </ToolbarMenu>
           {exampleEntries.length > 0 ? (
-            <ToolbarMenu label="Examples" buttonTitle="Starter MicroPython examples for ESP32">
+            <ToolbarMenu
+              label="Examples"
+              buttonTitle="Starter MicroPython examples for ESP32"
+              menuClassName="max-h-[min(28rem,78vh)] overflow-y-auto"
+            >
               <div className="border-b border-studio-border/50 px-3 py-1.5">
                 <div className="text-[10px] font-medium uppercase tracking-wide text-slate-500">
                   {BOARD_LABEL.esp32}
@@ -1278,32 +1259,28 @@ export default function TopToolbar({ workspace, previewCode = '', onAfterProject
         </div>
 
         <div className="flex min-w-0 min-h-0 flex-1 items-center gap-2 px-1 sm:gap-2 sm:px-2 xl:gap-3 xl:px-3">
-          {/*
-            Title and Notes are stacked vertically so the Notes label never shares a row with Save/Export
-            (wide titles + shrink-0 Notes used to overflow and overlap the action buttons at xl).
-          */}
-          <div className="flex min-h-0 min-w-0 flex-1 flex-col justify-center gap-1 py-0.5">
+          <div className="flex min-h-0 min-w-0 flex-1 items-center gap-1.5 py-0.5 sm:gap-2">
             <input
               value={projectName}
               onChange={(e) => setProjectName(e.target.value)}
-              className="w-full min-w-0 rounded-md border border-studio-border/90 bg-[#181b20] px-2 py-1 text-[11px] text-slate-100 placeholder:text-slate-600 focus:border-studio-accent/50 focus:outline-none focus:ring-1 focus:ring-studio-accent/25 sm:text-xs"
-              placeholder="Project title"
+              className="min-w-0 flex-1 rounded-md border border-studio-border/90 bg-[#181b20] px-2 py-1 text-[11px] text-slate-100 focus:border-studio-accent/50 focus:outline-none focus:ring-1 focus:ring-studio-accent/25 sm:text-xs"
               title="Project title — saved with Save, Save As, and Export Project (.json); leading/trailing spaces are trimmed when saving"
               aria-label="Project title"
             />
-            <details className="min-w-0 w-full max-w-full">
-              <summary className="inline-block cursor-pointer list-none rounded px-0.5 text-[10px] text-studio-muted hover:bg-white/5 hover:text-slate-400 [&::-webkit-details-marker]:hidden">
-                Notes (optional)
-              </summary>
-              <input
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                className="mt-1 min-w-0 w-full max-w-lg rounded-md border border-studio-border/60 bg-[#14171b]/90 px-2 py-1 text-[10px] text-slate-400 placeholder:text-slate-600/80 focus:border-studio-border/50 focus:outline-none focus:ring-1 focus:ring-studio-accent/15 sm:text-[11px]"
-                placeholder="Short notes for this project…"
-                title="Optional notes — stored with the title when you Save or Export Project"
-                aria-label="Project notes"
-              />
-            </details>
+            {String(description ?? '').trim() ? (
+              <details className="relative shrink-0 [&_summary::-webkit-details-marker]:hidden">
+                <summary
+                  className="flex cursor-pointer list-none items-center rounded-md border border-studio-border/70 bg-[#181b20] p-1.5 text-studio-muted hover:border-studio-border hover:text-slate-200"
+                  title="Wiring & example notes"
+                  aria-label="Wiring and example notes"
+                >
+                  <Info className="h-3.5 w-3.5 sm:h-4 sm:w-4" aria-hidden />
+                </summary>
+                <div className="absolute right-0 top-[calc(100%+4px)] z-[95] w-[min(22rem,calc(100vw-3rem))] max-h-48 overflow-y-auto rounded-md border border-studio-border/90 bg-[#1a1d22] px-2.5 py-2 text-left text-[11px] leading-snug text-slate-200 shadow-xl">
+                  {String(description).trim()}
+                </div>
+              </details>
+            ) : null}
           </div>
 
           <div className="hidden shrink-0 items-center gap-0.5 sm:gap-1 xl:flex">
@@ -1329,7 +1306,7 @@ export default function TopToolbar({ workspace, previewCode = '', onAfterProject
             />
             <div
               className="ml-0.5 flex items-center rounded-md border border-studio-border/50 bg-[#14171b]/60 p-px opacity-95"
-              title="Edit → Undo / Redo"
+              title="Undo / Redo"
             >
               <button
                 type="button"
@@ -1359,15 +1336,6 @@ export default function TopToolbar({ workspace, previewCode = '', onAfterProject
         <div className="flex shrink-0 items-center gap-0.5 border-l border-studio-border/80 pl-1.5 sm:gap-1 sm:pl-2 xl:pl-3">
           <button
             type="button"
-            className="rounded p-1.5 text-slate-600 hover:bg-white/5 hover:text-slate-400"
-            title={openSerialMonitorTitle()}
-            aria-label="Open Serial Monitor"
-            onClick={() => focusSerialMonitorTab()}
-          >
-            <Terminal className="h-3.5 w-3.5" />
-          </button>
-          <button
-            type="button"
             className="rounded p-1.5 text-studio-muted hover:bg-white/5 hover:text-slate-200"
             title="Settings — account and IDE options"
             aria-label="Settings"
@@ -1394,22 +1362,6 @@ export default function TopToolbar({ workspace, previewCode = '', onAfterProject
               <h2 id="open-project-title" className="text-sm font-semibold text-slate-100">
                 Open project
               </h2>
-              <p className="mt-1 text-[11px] leading-relaxed text-studio-muted">
-                {isDemoSupabaseOnly()
-                  ? 'Demo mode: Supabase cloud and this browser only.'
-                  : 'Supabase cloud, local API (when signed in), and this browser are separate places.'}{' '}
-                <span className="text-slate-500">
-                  Active Save target:{' '}
-                  <span className="font-medium text-slate-400">
-                    {persistTarget === 'supabase'
-                      ? 'Supabase'
-                      : persistTarget === 'express_api'
-                        ? 'Local API'
-                        : 'This browser only'}
-                  </span>
-                  . File → Export Project always downloads a file.
-                </span>
-              </p>
             </div>
             <div className="max-h-[min(26rem,65vh)] overflow-y-auto p-3">
               {isSupabaseConfigured() ? (
@@ -1441,35 +1393,6 @@ export default function TopToolbar({ workspace, previewCode = '', onAfterProject
                     </div>
                   ) : (
                     <ul className="space-y-2">{pickSupabaseProjects.map((p) => renderRemoteProjectCard(p, 'supabase'))}</ul>
-                  )}
-                </section>
-              ) : null}
-
-              {!isDemoSupabaseOnly() ? (
-                <section className="mb-5">
-                  <div className="mb-2">
-                    <h3 className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Local API</h3>
-                    <p className="mt-0.5 text-[10px] text-studio-muted">
-                      SQLite projects via <span className="font-mono text-slate-500">npm run server</span> or{' '}
-                      <span className="font-mono text-slate-500">npm run dev:full</span>. Sign in under Settings.
-                    </p>
-                  </div>
-                  {!showExpressRemote ? (
-                    <div className="rounded-lg border border-dashed border-studio-border/55 bg-[#1e2228]/90 px-3 py-3.5 text-center text-[11px] text-slate-500">
-                      Not signed in to the local API — use Settings → Local API account when the server is running.
-                    </div>
-                  ) : pickExLoading ? (
-                    <p className="py-3 text-center text-[11px] text-studio-muted">Loading API projects…</p>
-                  ) : pickExError ? (
-                    <div className="rounded-lg border border-red-900/40 bg-red-950/25 px-3 py-2.5 text-[11px] text-red-200/90">
-                      {pickExError}
-                    </div>
-                  ) : pickExpressProjects.length === 0 ? (
-                    <div className="rounded-lg border border-dashed border-studio-border/55 bg-[#1e2228]/90 px-3 py-3.5 text-center text-[11px] text-slate-500">
-                      No API projects yet. Save while signed in to the local API to create one.
-                    </div>
-                  ) : (
-                    <ul className="space-y-2">{pickExpressProjects.map((p) => renderRemoteProjectCard(p, 'express_api'))}</ul>
                   )}
                 </section>
               ) : null}
@@ -1664,7 +1587,7 @@ export default function TopToolbar({ workspace, previewCode = '', onAfterProject
   );
 }
 
-function ToolbarMenu({ label, children, buttonTitle }) {
+function ToolbarMenu({ label, children, buttonTitle, menuClassName = '' }) {
   return (
     <div className="group relative inline-block">
       <button
@@ -1675,8 +1598,8 @@ function ToolbarMenu({ label, children, buttonTitle }) {
         {label}
         <ChevronDown className="h-3 w-3 opacity-60" />
       </button>
-      <div className="invisible absolute left-0 top-full z-[120] min-w-[14rem] pt-1 opacity-0 transition-all group-hover:visible group-hover:opacity-100">
-        <div className="rounded border border-studio-border bg-[#2a2f36] py-1 shadow-lg">{children}</div>
+      <div className="invisible absolute left-0 top-full z-[120] min-w-[14rem] pt-1 opacity-0 transition-all group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
+        <div className={`rounded border border-studio-border bg-[#2a2f36] py-1 shadow-lg ${menuClassName}`}>{children}</div>
       </div>
     </div>
   );

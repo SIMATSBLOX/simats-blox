@@ -21,6 +21,8 @@ export function isSerialProtocolNoiseLine(line) {
   if (/^__MPYHASH__\s+[0-9a-f]+\s*$/i.test(s)) return true;
   if (s.includes('__RBFRM__')) return true;
   if (s.includes('__MPYREADB64__') || s.includes('@@END@@')) return true;
+  // Upload verify readback: ubinascii lines (no markers) can wrap as long base64-only rows.
+  if (s.length >= 96 && /^[A-Za-z0-9+/]+=*$/.test(s)) return true;
   // Friendly REPL echoes the verify one-liner (quotes vary).
   if (/print\s*\(\s*['"]__RBFRM__/.test(s) || /print\s*\(\s*['"]__MPYREADB64__/.test(s)) return true;
   if (/^import ubinascii;__b=open\('main\.py','rb'\)\.read/i.test(s)) return true;

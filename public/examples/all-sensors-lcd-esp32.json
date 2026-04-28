@@ -1,0 +1,327 @@
+{
+  "version": 1,
+  "projectName": "Example: All sensors + LCD (ESP32)",
+  "boardId": "esp32",
+  "description": "Combined demo with slower pacing between reads: DHT11 GPIO2, IR GPIO27, PIR GPIO23, Soil ADC35, MQ2 ADC32, Servo GPIO18, Ultrasonic TRIG4/ECHO13, MAX30102 SDA21/SCL22. Display mirrors prints to OLED/LCD.",
+  "blockly": {
+    "blocks": {
+      "languageVersion": 0,
+      "blocks": [
+        {
+          "type": "esp32_when_starts",
+          "id": "all_hat",
+          "x": 20,
+          "y": 20,
+          "next": {
+            "block": {
+              "type": "comm_serial_begin",
+              "id": "all_serial_begin",
+              "fields": {
+                "BAUD": 115200
+              },
+              "next": {
+                "block": {
+                  "type": "mp_display_i2c_setup",
+                  "id": "all_display_setup",
+                  "fields": {
+                    "W": 128,
+                    "H": 64,
+                    "SCL": 22,
+                    "SDA": 21
+                  },
+                  "next": {
+                    "block": {
+                      "type": "mp_max30102_setup",
+                      "id": "all_max_setup",
+                      "fields": {
+                        "SDA": 21,
+                        "SCL": 22
+                      },
+                      "next": {
+                        "block": {
+                          "type": "hw_forever",
+                          "id": "all_forever",
+                          "inputs": {
+                            "DO": {
+                              "block": {
+                                "type": "comm_serial_println",
+                                "id": "all_title_print",
+                                "inputs": {
+                                  "VAL": {
+                                    "block": {
+                                      "type": "text",
+                                      "id": "all_title_text",
+                                      "fields": {
+                                        "TEXT": "=== Multi-sensor tick ==="
+                                      }
+                                    }
+                                  }
+                                },
+                                "next": {
+                                  "block": {
+                                    "type": "comm_serial_println",
+                                    "id": "all_dht_temp_print",
+                                    "inputs": {
+                                      "VAL": {
+                                        "block": {
+                                          "type": "sensor_dht_temp",
+                                          "id": "all_dht_temp_sensor",
+                                          "fields": {
+                                            "DPIN": 2,
+                                            "TYPE": "DHT11"
+                                          }
+                                        }
+                                      }
+                                    },
+                                    "next": {
+                                      "block": {
+                                        "type": "comm_serial_println",
+                                        "id": "all_dht_hum_print",
+                                        "inputs": {
+                                          "VAL": {
+                                            "block": {
+                                              "type": "sensor_dht_humidity",
+                                              "id": "all_dht_hum_sensor",
+                                              "fields": {
+                                                "DPIN": 2,
+                                                "TYPE": "DHT11"
+                                              }
+                                            }
+                                          }
+                                        },
+                                        "next": {
+                                          "block": {
+                                            "type": "hw_wait",
+                                            "id": "all_wait_after_dht",
+                                            "fields": {
+                                              "MS": 1200
+                                            },
+                                            "next": {
+                                              "block": {
+                                                "type": "comm_serial_println",
+                                                "id": "all_soil_print",
+                                                "inputs": {
+                                                  "VAL": {
+                                                    "block": {
+                                                      "type": "sensor_analog_mblock",
+                                                      "id": "all_soil_sensor",
+                                                      "fields": {
+                                                        "ASTYPE": "SOIL",
+                                                        "APIN": 35
+                                                      }
+                                                    }
+                                                  }
+                                                },
+                                                "next": {
+                                                  "block": {
+                                                    "type": "hw_wait",
+                                                    "id": "all_wait_after_soil",
+                                                    "fields": {
+                                                      "MS": 600
+                                                    },
+                                                    "next": {
+                                                      "block": {
+                                                        "type": "comm_serial_println",
+                                                        "id": "all_mq2_print",
+                                                        "inputs": {
+                                                          "VAL": {
+                                                            "block": {
+                                                              "type": "sensor_analog_mblock",
+                                                              "id": "all_mq2_sensor",
+                                                              "fields": {
+                                                                "ASTYPE": "GAS",
+                                                                "APIN": 32
+                                                              }
+                                                            }
+                                                          }
+                                                        },
+                                                        "next": {
+                                                          "block": {
+                                                            "type": "hw_wait",
+                                                            "id": "all_wait_after_mq2",
+                                                            "fields": {
+                                                              "MS": 600
+                                                            },
+                                                            "next": {
+                                                              "block": {
+                                                                "type": "comm_serial_println",
+                                                                "id": "all_ir_print",
+                                                                "inputs": {
+                                                                  "VAL": {
+                                                                    "block": {
+                                                                      "type": "sensor_digital_mblock",
+                                                                      "id": "all_ir_sensor",
+                                                                      "fields": {
+                                                                        "DSTYPE": "IR",
+                                                                        "DPIN": 27
+                                                                      }
+                                                                    }
+                                                                  }
+                                                                },
+                                                                "next": {
+                                                                  "block": {
+                                                                    "type": "hw_wait",
+                                                                    "id": "all_wait_after_ir",
+                                                                    "fields": {
+                                                                      "MS": 600
+                                                                    },
+                                                                    "next": {
+                                                                      "block": {
+                                                                        "type": "comm_serial_println",
+                                                                        "id": "all_pir_print",
+                                                                        "inputs": {
+                                                                          "VAL": {
+                                                                            "block": {
+                                                                              "type": "sensor_digital_mblock",
+                                                                              "id": "all_pir_sensor",
+                                                                              "fields": {
+                                                                                "DSTYPE": "PIR",
+                                                                                "DPIN": 23
+                                                                              }
+                                                                            }
+                                                                          }
+                                                                        },
+                                                                        "next": {
+                                                                          "block": {
+                                                                            "type": "hw_wait",
+                                                                            "id": "all_wait_after_pir",
+                                                                            "fields": {
+                                                                              "MS": 600
+                                                                            },
+                                                                            "next": {
+                                                                              "block": {
+                                                                                "type": "comm_serial_println",
+                                                                                "id": "all_ultra_print",
+                                                                                "inputs": {
+                                                                                  "VAL": {
+                                                                                    "block": {
+                                                                                      "type": "sensor_ultrasonic_mblock",
+                                                                                      "id": "all_ultra_sensor",
+                                                                                      "fields": {
+                                                                                        "TRIG": 4,
+                                                                                        "ECHO": 13
+                                                                                      }
+                                                                                    }
+                                                                                  }
+                                                                                },
+                                                                                "next": {
+                                                                                  "block": {
+                                                                                    "type": "hw_wait",
+                                                                                    "id": "all_wait_after_ultra",
+                                                                                    "fields": {
+                                                                                      "MS": 700
+                                                                                    },
+                                                                                    "next": {
+                                                                                      "block": {
+                                                                                        "type": "mp_max30102_print_raw",
+                                                                                        "id": "all_max_print",
+                                                                                        "next": {
+                                                                                          "block": {
+                                                                                            "type": "hw_wait",
+                                                                                            "id": "all_wait_after_max",
+                                                                                            "fields": {
+                                                                                              "MS": 700
+                                                                                            },
+                                                                                            "next": {
+                                                                                              "block": {
+                                                                                                "type": "output_servo_write",
+                                                                                                "id": "all_servo_0",
+                                                                                                "fields": {
+                                                                                                  "DPIN": 18,
+                                                                                                  "ANGLE": 0
+                                                                                                },
+                                                                                                "next": {
+                                                                                                  "block": {
+                                                                                                    "type": "hw_wait",
+                                                                                                    "id": "all_wait_0",
+                                                                                                    "fields": {
+                                                                                                      "MS": 700
+                                                                                                    },
+                                                                                                    "next": {
+                                                                                                      "block": {
+                                                                                                        "type": "output_servo_write",
+                                                                                                        "id": "all_servo_90",
+                                                                                                        "fields": {
+                                                                                                          "DPIN": 18,
+                                                                                                          "ANGLE": 90
+                                                                                                        },
+                                                                                                        "next": {
+                                                                                                          "block": {
+                                                                                                            "type": "hw_wait",
+                                                                                                            "id": "all_wait_90",
+                                                                                                            "fields": {
+                                                                                                              "MS": 700
+                                                                                                            },
+                                                                                                            "next": {
+                                                                                                              "block": {
+                                                                                                                "type": "output_servo_write",
+                                                                                                                "id": "all_servo_180",
+                                                                                                                "fields": {
+                                                                                                                  "DPIN": 18,
+                                                                                                                  "ANGLE": 180
+                                                                                                                },
+                                                                                                                "next": {
+                                                                                                                  "block": {
+                                                                                                                    "type": "hw_wait",
+                                                                                                                    "id": "all_wait_180",
+                                                                                                                    "fields": {
+                                                                                                                      "MS": 2000
+                                                                                                                    }
+                                                                                                                  }
+                                                                                                                }
+                                                                                                              }
+                                                                                                            }
+                                                                                                          }
+                                                                                                        }
+                                                                                                      }
+                                                                                                    }
+                                                                                                  }
+                                                                                                }
+                                                                                              }
+                                                                                            }
+                                                                                          }
+                                                                                        }
+                                                                                      }
+                                                                                    }
+                                                                                  }
+                                                                                }
+                                                                              }
+                                                                            }
+                                                                          }
+                                                                        }
+                                                                      }
+                                                                    }
+                                                                  }
+                                                                }
+                                                              }
+                                                            }
+                                                          }
+                                                        }
+                                                      }
+                                                    }
+                                                  }
+                                                }
+                                              }
+                                            }
+                                          }
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

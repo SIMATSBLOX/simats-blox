@@ -104,7 +104,7 @@ export default function DeviceHardwareSampleCode({
   successMode = false,
   onPrepareCode,
 }) {
-  const [preview, setPreview] = useState(/** @type {'arduino' | 'micropython' | null} */ (null));
+  const [previewOpen, setPreviewOpen] = useState(false);
   const storedKey = useStoredDeviceKey(device.deviceId);
   const apiKey = (pendingApiKey && String(pendingApiKey).trim()) || storedKey || '';
 
@@ -140,31 +140,20 @@ export default function DeviceHardwareSampleCode({
     ? 'Set your Wi‑Fi name and password in the file, then upload to the ESP32.'
     : null;
 
-  const buttons = (
-    <>
-      <Button
-        type="button"
-        variant="default"
-        className="!gap-1 !px-2 !py-1 !text-[10px]"
-        onClick={() => void copyText('C++ (ESP32) sample copied.', samples.arduino)}
-      >
-        <Copy className="h-3 w-3" aria-hidden />
-        Copy C++ (ESP32)
-      </Button>
-      <Button
-        type="button"
-        variant="default"
-        className="!gap-1 !px-2 !py-1 !text-[10px]"
-        onClick={() => void copyText('MicroPython sample copied.', samples.micropython)}
-      >
-        <Copy className="h-3 w-3" aria-hidden />
-        Copy MicroPython
-      </Button>
-    </>
+  const copyButton = (
+    <Button
+      type="button"
+      variant="default"
+      className="!gap-1 !px-2 !py-1 !text-[10px]"
+      onClick={() => void copyText('MicroPython sample copied.', samples.micropython)}
+    >
+      <Copy className="h-3 w-3" aria-hidden />
+      Copy MicroPython
+    </Button>
   );
 
   if (variant === 'inline') {
-    return <div className="flex flex-wrap items-center gap-2">{buttons}</div>;
+    return <div className="flex flex-wrap items-center gap-2">{copyButton}</div>;
   }
 
   return (
@@ -175,38 +164,28 @@ export default function DeviceHardwareSampleCode({
       </div>
       <p className="mt-1 text-[10px] leading-snug text-slate-500">
         {hintSuccess ??
-          'Wi‑Fi, cloud URL, ID, and key are in the snippet — paste into the Arduino‑ESP32 core or a MicroPython editor.'}
+          'Wi‑Fi, cloud URL, device ID, and key are in the snippet — paste into a MicroPython editor or the IDE upload flow.'}
       </p>
-      <div className="mt-2 flex flex-wrap gap-2">{buttons}</div>
+      <div className="mt-2 flex flex-wrap gap-2">{copyButton}</div>
       <details className="mt-2 rounded border border-studio-border/35 bg-[#1a1d22]/60">
         <summary className="cursor-pointer list-none px-2 py-1.5 text-[10px] text-slate-500 hover:text-slate-400 [&::-webkit-details-marker]:hidden">
-          Preview code (optional)
+          Preview MicroPython (optional)
         </summary>
         <div className="border-t border-studio-border/35 px-2 pb-2 pt-2">
-          <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              variant="ghost"
-              className="!px-2 !py-0.5 !text-[10px]"
-              onClick={() => setPreview((p) => (p === 'arduino' ? null : 'arduino'))}
-            >
-              {preview === 'arduino' ? 'Hide' : 'Show'} C++ (ESP32)
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              className="!px-2 !py-0.5 !text-[10px]"
-              onClick={() => setPreview((p) => (p === 'micropython' ? null : 'micropython'))}
-            >
-              {preview === 'micropython' ? 'Hide' : 'Show'} MicroPython
-            </Button>
-          </div>
-          {preview ? (
+          <Button
+            type="button"
+            variant="ghost"
+            className="!px-2 !py-0.5 !text-[10px]"
+            onClick={() => setPreviewOpen((p) => !p)}
+          >
+            {previewOpen ? 'Hide' : 'Show'} code
+          </Button>
+          {previewOpen ? (
             <pre
               className="mt-2 max-h-40 overflow-auto rounded border border-studio-border/50 bg-[#14171b] p-2 font-mono text-[9px] leading-relaxed text-emerald-100/95"
               tabIndex={0}
             >
-              {preview === 'arduino' ? samples.arduino : samples.micropython}
+              {samples.micropython}
             </pre>
           ) : null}
         </div>

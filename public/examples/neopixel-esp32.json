@@ -1,0 +1,174 @@
+{
+  "version": 1,
+  "projectName": "Example: NeoPixel strip",
+  "boardId": "esp32",
+  "description": "WS2812 data on GPIO15 (GPIO18 reserved for servo in default kit wiring). Count=8; 5V+GND+common ground; level-shifter if strip ignores 3.3V data.",
+  "blockly": {
+    "blocks": {
+      "languageVersion": 0,
+      "blocks": [
+        {
+          "type": "esp32_when_starts",
+          "id": "{,$B=-r7F-t@+/pLuBb$",
+          "x": 20,
+          "y": 20,
+          "next": {
+            "block": {
+              "type": "comm_serial_begin",
+              "id": "`So6}RZ-:*EoX`/;78Ra",
+              "fields": {
+                "BAUD": 115200
+              },
+              "next": {
+                "block": {
+                  "type": "mp_neopixel_setup",
+                  "id": "Qx1T]!]B@f6@}slu=:gb",
+                  "fields": {
+                    "DPIN": 15,
+                    "COUNT": 8
+                  },
+                  "next": {
+                    "block": {
+                      "type": "comm_serial_println",
+                      "id": "RPWWtVZ`){jzUaIGt3Zh",
+                      "inputs": {
+                        "VAL": {
+                          "block": {
+                            "type": "text",
+                            "id": "A{SzSw$rV3`6iYOEod}D",
+                            "fields": {
+                              "TEXT": "NeoPixel OK — default data pin GPIO15. Change setup if your strip is on another IO."
+                            }
+                          }
+                        }
+                      },
+                      "next": {
+                        "block": {
+                          "type": "hw_forever",
+                          "id": "ZcvcFTNr5A(s^04insQ/",
+                          "inputs": {
+                            "DO": {
+                              "block": {
+                                "type": "mp_neopixel_fill",
+                                "id": "-0=1l8xd1sdbf]G`?|Ap",
+                                "fields": {
+                                  "R": 255,
+                                  "G": 0,
+                                  "B": 0
+                                },
+                                "next": {
+                                  "block": {
+                                    "type": "comm_serial_println",
+                                    "id": "yDr4GiyxA)KsS(t`_/Hx",
+                                    "inputs": {
+                                      "VAL": {
+                                        "block": {
+                                          "type": "text",
+                                          "id": "6Py)WjSZv}?|U/iTm/E(",
+                                          "fields": {
+                                            "TEXT": "NEO: red"
+                                          }
+                                        }
+                                      }
+                                    },
+                                    "next": {
+                                      "block": {
+                                        "type": "hw_wait",
+                                        "id": "c,rz#G`u|K);Ehh`BgL/",
+                                        "fields": {
+                                          "MS": 400
+                                        },
+                                        "next": {
+                                          "block": {
+                                            "type": "mp_neopixel_fill",
+                                            "id": "ZdTRbzO[1s3@.W=si4z6",
+                                            "fields": {
+                                              "R": 0,
+                                              "G": 255,
+                                              "B": 0
+                                            },
+                                            "next": {
+                                              "block": {
+                                                "type": "comm_serial_println",
+                                                "id": "N.}1^J=Ey%SOYde,W(O%",
+                                                "inputs": {
+                                                  "VAL": {
+                                                    "block": {
+                                                      "type": "text",
+                                                      "id": "ZqL,G5.+wW8E76m4Mdol",
+                                                      "fields": {
+                                                        "TEXT": "NEO: green"
+                                                      }
+                                                    }
+                                                  }
+                                                },
+                                                "next": {
+                                                  "block": {
+                                                    "type": "hw_wait",
+                                                    "id": "s,MIg%o$bo_jFc*,k(8@",
+                                                    "fields": {
+                                                      "MS": 400
+                                                    },
+                                                    "next": {
+                                                      "block": {
+                                                        "type": "mp_neopixel_fill",
+                                                        "id": "z##EzG!6;Y*5i5@t2#)r",
+                                                        "fields": {
+                                                          "R": 0,
+                                                          "G": 0,
+                                                          "B": 255
+                                                        },
+                                                        "next": {
+                                                          "block": {
+                                                            "type": "comm_serial_println",
+                                                            "id": "XJc7$SRg_lmDn5~EoWTH",
+                                                            "inputs": {
+                                                              "VAL": {
+                                                                "block": {
+                                                                  "type": "text",
+                                                                  "id": "/(-o-?Lf[y=zjT#)mGb[",
+                                                                  "fields": {
+                                                                    "TEXT": "NEO: blue"
+                                                                  }
+                                                                }
+                                                              }
+                                                            },
+                                                            "next": {
+                                                              "block": {
+                                                                "type": "hw_wait",
+                                                                "id": "8[ZV?jV98Gr(uMgC2te@",
+                                                                "fields": {
+                                                                  "MS": 400
+                                                                }
+                                                              }
+                                                            }
+                                                          }
+                                                        }
+                                                      }
+                                                    }
+                                                  }
+                                                }
+                                              }
+                                            }
+                                          }
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

@@ -2,12 +2,19 @@
  * Client-side “stale = offline” using last activity time. Server still stores status/last_seen_at;
  * this layer matches user expectation when readings stop (no server cron required).
  *
- * Override with VITE_DEVICE_OFFLINE_AFTER_MS (milliseconds). Default: 120000 (2 minutes).
+ * Override with VITE_DEVICE_OFFLINE_AFTER_MS (milliseconds). Default: 90s (no new reading → Offline).
  */
 export const DEVICE_OFFLINE_AFTER_MS = (() => {
   const n = Number(import.meta.env.VITE_DEVICE_OFFLINE_AFTER_MS);
-  return Number.isFinite(n) && n >= 10_000 ? n : 120_000;
+  return Number.isFinite(n) && n >= 10_000 ? n : 90_000;
 })();
+
+/** Short label for tooltips / help, e.g. "2 min" or "45 s". */
+export function deviceOfflineIdleHint() {
+  return DEVICE_OFFLINE_AFTER_MS >= 60_000
+    ? `${Math.round(DEVICE_OFFLINE_AFTER_MS / 60_000)} min`
+    : `${Math.round(DEVICE_OFFLINE_AFTER_MS / 1000)} s`;
+}
 
 /**
  * @param {{ lastSeenAt?: string | null, status?: string }} device

@@ -170,7 +170,6 @@ export default function AddSensorModal({ open, onClose, onCreated }) {
                         value={customLabel}
                         onChange={(e) => setCustomLabel(e.target.value)}
                         autoComplete="off"
-                        placeholder="e.g. BMP280 window desk"
                         className="mt-0.5 w-full rounded-md border border-studio-border bg-[#14171b] px-2 py-1.5 text-sm text-slate-200"
                       />
                     </div>
@@ -236,7 +235,6 @@ export default function AddSensorModal({ open, onClose, onCreated }) {
                     value={location}
                     onChange={(e) => setLocation(e.target.value)}
                     autoComplete="off"
-                    placeholder="e.g. Lab bench A"
                     className="mt-0.5 w-full rounded border border-studio-border bg-[#14171b] px-2 py-1.5 text-sm text-slate-200"
                   />
                 </label>

@@ -1,15 +1,14 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Trash2 } from 'lucide-react';
+import { Info, Trash2 } from 'lucide-react';
 import Panel from '../ui/Panel.jsx';
 import Tabs from '../ui/Tabs.jsx';
 import Button from '../ui/Button.jsx';
-import { SERIAL_BAUD_PRESETS, useIdeStore } from '../../store/ideStore.js';
+import { ESP32_USB_SERIAL_BAUD, useIdeStore } from '../../store/ideStore.js';
 import { formatWebSerialError, getWebSerialAvailability, writeSerialText } from '../../lib/webSerialService.js';
 import { rerunMicroPythonMainPy, sendMicroPythonInterrupt } from '../../lib/micropythonSerialUpload.js';
 import { SERIAL_MSG } from '../../lib/serialUserMessages.js';
 import { toast } from '../../lib/toast.js';
-import { consoleSerialDisconnectedCopy } from '../../lib/boardUiCopy.js';
 import Esp32MpyProgressModal from './Esp32MpyProgressModal.jsx';
 import { mapMpyStepToProgress } from '../../lib/mpyProgressPhases.js';
 import { useDashboardSession } from '../../hooks/useDashboardSession.js';
@@ -23,6 +22,7 @@ const LS_DEV = 'simats_serial_forward_device_id';
 
 export default function ConsolePanel() {
   const [tab, setTab] = useState('log');
+  const [serialGuideOpen, setSerialGuideOpen] = useState(false);
   const [sendDraft, setSendDraft] = useState('');
   const [appendNewline, setAppendNewline] = useState(true);
   const [sendHint, setSendHint] = useState(/** @type {{ kind: 'ok' | 'err'; msg: string } | null} */ (null));
@@ -37,7 +37,6 @@ export default function ConsolePanel() {
   const connectState = useIdeStore((s) => s.connectState);
   const serialTabFocusKey = useIdeStore((s) => s.serialTabFocusKey);
   const serialBaudRate = useIdeStore((s) => s.serialBaudRate);
-  const setSerialBaudRate = useIdeStore((s) => s.setSerialBaudRate);
   const appendLog = useIdeStore((s) => s.appendLog);
   const serialPipelineBusy = useIdeStore((s) => s.serialPipelineBusy);
   const setSerialPipelineBusy = useIdeStore((s) => s.setSerialPipelineBusy);
@@ -166,6 +165,10 @@ export default function ConsolePanel() {
     setTab('serial');
   }, [serialTabFocusKey]);
 
+  useEffect(() => {
+    if (tab !== 'serial') setSerialGuideOpen(false);
+  }, [tab]);
+
   const onSerialScroll = () => {
     const el = serialScrollRef.current;
     if (!el) return;
@@ -196,16 +199,6 @@ export default function ConsolePanel() {
   const serialAvailability = getWebSerialAvailability();
   const canSend = serialAvailability.ok && connectState === 'connected' && !serialPipelineBusy;
   const canMpSession = serialAvailability.ok && connectState === 'connected' && !serialPipelineBusy;
-
-  const handleBaudChange = (e) => {
-    const v = Number(e.target.value);
-    setSerialBaudRate(v);
-    const msg =
-      connectState === 'connected'
-        ? `${SERIAL_MSG.reconnectAfterBaud} (now ${v} baud selected).`
-        : `Baud ${v} for next Connect — ESP32 MicroPython USB is often 115200.`;
-    toast('info', msg);
-  };
 
   const handleSend = async () => {
     if (useIdeStore.getState().serialPipelineBusy) {
@@ -313,7 +306,7 @@ export default function ConsolePanel() {
   };
 
   const inputCls =
-    'w-full rounded border border-studio-border bg-[#1b1f24] px-2 py-1.5 text-xs text-slate-100 placeholder:text-slate-600 focus:border-studio-accent/50 focus:outline-none focus:ring-1 focus:ring-studio-accent/25 disabled:opacity-45';
+    'w-full rounded border border-studio-border bg-[#1b1f24] px-2 py-1.5 text-xs text-slate-100 focus:border-studio-accent/50 focus:outline-none focus:ring-1 focus:ring-studio-accent/25 disabled:opacity-45';
 
   return (
     <>
@@ -342,21 +335,71 @@ export default function ConsolePanel() {
           <Panel
             className="h-full rounded-none border-0 bg-transparent"
             headerRight={
-              <Button variant="ghost" className="!py-0.5 !text-[11px]" onClick={() => clearSerial()} title="Clear serial view">
-                <Trash2 className="h-3.5 w-3.5" />
-              </Button>
+              <div className="flex items-center gap-0.5">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className={`!py-0.5 !px-1 !text-[11px] ${serialGuideOpen ? 'text-studio-accent' : ''}`}
+                  onClick={() => setSerialGuideOpen((o) => !o)}
+                  aria-expanded={serialGuideOpen}
+                  aria-controls="serial-monitor-guide"
+                  title="Serial Monitor — how it works"
+                >
+                  <Info className="h-3.5 w-3.5" aria-hidden />
+                  <span className="sr-only">Serial Monitor help</span>
+                </Button>
+                <Button variant="ghost" className="!py-0.5 !text-[11px]" onClick={() => clearSerial()} title="Clear serial view">
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </div>
             }
           >
             <div className="flex h-full min-h-0 flex-col gap-2 p-1 sm:flex-row sm:gap-2 sm:pl-1 sm:pr-0.5">
               <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-1">
-                <p className="shrink-0 text-[10px] leading-snug text-slate-600">
-                  <span className="text-slate-500">USB path:</span> Board (toolbar) → Connect → Upload on ESP32 → output here.
-                  Optional: use the side panel to send matching lines to{' '}
-                  <Link to="/devices" className="text-studio-accent/90 hover:underline">
-                    Devices
-                  </Link>
-                  .
-                </p>
+                {serialGuideOpen ? (
+                  <div
+                    id="serial-monitor-guide"
+                    role="region"
+                    aria-label="Serial Monitor guide"
+                    className="max-h-[min(12rem,40vh)] shrink-0 overflow-y-auto rounded border border-studio-border/50 bg-[#1e2329] px-2.5 py-2 text-[10px] leading-relaxed text-slate-300"
+                  >
+                    <p className="mb-1.5 font-semibold text-slate-200">Serial Monitor — quick guide</p>
+                    <ol className="list-decimal space-y-1.5 pl-4 marker:text-slate-500">
+                      <li>
+                        <span className="font-medium text-slate-200">Connect the board:</span> use{' '}
+                        <span className="font-medium text-slate-200">Connect</span> in the top toolbar (Chrome, Edge, or Opera).
+                        Choose your ESP32 USB device. Baud is fixed at {ESP32_USB_SERIAL_BAUD} for MicroPython USB.
+                      </li>
+                      <li>
+                        <span className="font-medium text-slate-200">Run your code:</span> build blocks, then{' '}
+                        <span className="font-medium text-slate-200">Upload</span> (or Run again) while connected. Output from{' '}
+                        <span className="font-mono text-slate-400">print()</span> appears in the area below.
+                      </li>
+                      <li>
+                        <span className="font-medium text-slate-200">Stop / Run again:</span> available when connected. Stop sends
+                        an interrupt (like Ctrl+C). Run again re-runs <span className="font-mono text-slate-400">main.py</span> on
+                        the board.
+                      </li>
+                      <li>
+                        <span className="font-medium text-slate-200">Send:</span> type text and press Send to write to the REPL
+                        (optional newline checkbox).
+                      </li>
+                      <li>
+                        <span className="font-medium text-slate-200">Devices (optional):</span> sign in under Settings, save a
+                        device key on{' '}
+                        <Link to="/devices?tab=setup" className="text-studio-accent hover:underline">
+                          Devices → Setup
+                        </Link>
+                        , then use the side panel to forward matching lines to your dashboard.
+                      </li>
+                    </ol>
+                    <div className="mt-2 flex justify-end border-t border-studio-border/40 pt-1.5">
+                      <Button type="button" variant="ghost" className="!h-7 !px-2 !text-[10px]" onClick={() => setSerialGuideOpen(false)}>
+                        Close
+                      </Button>
+                    </div>
+                  </div>
+                ) : null}
                 <div className="shrink-0 text-[10px] leading-snug text-studio-muted">
                   {!serialAvailability.ok ? (
                     <span className="text-amber-200/85">{serialAvailability.message}</span>
@@ -366,39 +409,18 @@ export default function ConsolePanel() {
                       <span className="text-slate-500"> · </span>
                       <span className="font-mono text-slate-400">{serialBaudRate}</span>
                       <span> baud</span>
-                      <>
-                        <span className="text-slate-500"> · </span>
-                        <span>{SERIAL_MSG.connectedNoDataEsp32Hint}</span>
-                      </>
                     </span>
                   ) : connectState === 'connecting' ? (
-                    <span className="text-slate-400">Connecting… choose a port if the browser prompts you.</span>
-                  ) : (
-                    <span>{consoleSerialDisconnectedCopy(serialBaudRate)}</span>
-                  )}
+                    <span className="text-slate-400">Connecting…</span>
+                  ) : null}
                 </div>
 
                 <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 border-b border-studio-border/40 pb-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <label htmlFor="serial-baud" className="text-[10px] text-slate-500">
-                      Baud
-                    </label>
-                    <select
-                      id="serial-baud"
-                      value={serialBaudRate}
-                      onChange={handleBaudChange}
-                      className="rounded border border-studio-border bg-[#181b20] px-2 py-0.5 font-mono text-[11px] text-slate-200 focus:border-studio-accent/50 focus:outline-none focus:ring-1 focus:ring-studio-accent/25"
-                      aria-label="Serial baud rate for next connection"
-                    >
-                      {SERIAL_BAUD_PRESETS.map((b) => (
-                        <option key={b} value={b}>
-                          {b}
-                        </option>
-                      ))}
-                    </select>
-                    {connectState === 'connected' ? (
-                      <span className="text-[10px] text-amber-200/80">{SERIAL_MSG.reconnectAfterBaud}</span>
-                    ) : null}
+                    <span className="text-[10px] text-slate-500">USB serial</span>
+                    <span className="font-mono text-[11px] text-slate-300" title="ESP32 MicroPython USB REPL">
+                      {ESP32_USB_SERIAL_BAUD} baud
+                    </span>
                   </div>
                   <div className="flex flex-wrap items-center gap-1">
                     <span className="text-[10px] text-slate-500">MP</span>
@@ -440,11 +462,6 @@ export default function ConsolePanel() {
                     >
                       Run again
                     </Button>
-                    {connectState !== 'connected' || !serialAvailability.ok ? (
-                      <span className="w-full text-[10px] text-studio-muted sm:w-auto">
-                        Connect USB for Stop / Run again.
-                      </span>
-                    ) : null}
                   </div>
                 </div>
 
@@ -460,13 +477,9 @@ export default function ConsolePanel() {
                   className="min-h-0 flex-1 overflow-auto rounded border border-studio-border/40 bg-[#14171b]/90 p-2 font-mono text-[11px] leading-snug text-amber-100/95"
                 >
                   {serialLines.length === 0 ? (
-                    <span className="text-studio-muted">
-                      {connectState === 'connected'
-                        ? SERIAL_MSG.connectedNoData
-                        : serialAvailability.ok
-                          ? 'Not connected — use toolbar Connect, then open this tab to watch output.'
-                          : SERIAL_MSG.browserUnsupported}
-                    </span>
+                    !serialAvailability.ok ? (
+                      <span className="text-studio-muted">{SERIAL_MSG.browserUnsupported}</span>
+                    ) : null
                   ) : (
                     serialLines.map((l) => (
                       <div key={l.id} className="whitespace-pre-wrap break-all">
@@ -488,13 +501,6 @@ export default function ConsolePanel() {
                       type="text"
                       value={sendDraft}
                       onChange={(e) => setSendDraft(e.target.value)}
-                      placeholder={
-                        canSend
-                          ? 'Text to send…'
-                          : connectState !== 'connected'
-                            ? 'Connect to send…'
-                            : SERIAL_MSG.busyPipeline
-                      }
                       disabled={!canSend}
                       className={`${inputCls} min-w-0 flex-1`}
                       aria-label="Serial send buffer"

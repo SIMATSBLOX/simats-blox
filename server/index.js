@@ -160,7 +160,7 @@ app.post('/api/projects', authMiddleware, (req, res) => {
   }
   const name = String(projectName ?? 'Untitled project').slice(0, 200);
   const desc = typeof description === 'string' ? description.slice(0, 2000) : '';
-  const board = boardId === 'esp32' ? 'esp32' : 'arduino_uno';
+  const board = 'esp32';
   const id = crypto.randomUUID();
   const updatedAt = new Date().toISOString();
   let blocklyJson;
@@ -191,7 +191,7 @@ app.put('/api/projects/:id', authMiddleware, (req, res) => {
   }
   const name = String(projectName ?? 'Untitled project').slice(0, 200);
   const desc = typeof description === 'string' ? description.slice(0, 2000) : '';
-  const board = boardId === 'esp32' ? 'esp32' : 'arduino_uno';
+  const board = 'esp32';
   const updatedAt = new Date().toISOString();
   let blocklyJson;
   try {
@@ -224,8 +224,8 @@ try {
   console.error('[sensor] Sensor platform failed — SQLite API still available.', e?.message || e);
 }
 
-httpServer.listen(PORT, () => {
-  console.log(`SIMATS BLOX API listening on http://127.0.0.1:${PORT}`);
+httpServer.listen(PORT, '0.0.0.0', () => {
+  console.log(`SIMATS BLOX API listening on http://127.0.0.1:${PORT} (all interfaces — use LAN IP from other devices)`);
   if (JWT_SECRET === 'dev-only-change-JWT_SECRET-in-production') {
     console.warn('[warn] Using default JWT_SECRET — set JWT_SECRET for production.');
   }

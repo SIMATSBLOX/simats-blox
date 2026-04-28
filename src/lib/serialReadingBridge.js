@@ -3,15 +3,16 @@
  * Uses the selected device's id + sensor type unless the line is full JSON with those fields.
  *
  * Canonical labeled lines (hardware IDE generators + examples):
- * - dht11:  Humidity: 83.0 % Temperature: 31.0 °C
+ * - dht11:  Humidity: 83.0 % Temperature: 31.0 °C (merged or single println from IDE)
  * - ultrasonic: Distance: 13.36 cm
  * - lm35:     Temperature: 29.4 °C
- * - soil_moisture: Moisture Level: 62 % (aliases: soil moisture:, moisture:)
+ * - soil_moisture: Moisture: 62 % (legacy: Moisture Level: …; aliases: soil moisture:, moisture:)
  * - ir_sensor / pir: Detection: 1 | 0 (or true/false/yes/no/…)
  * - mq2: Gas level: N
  * - ldr: Light level: N
  * - rain_sensor: Rain level: N
  * - bmp280: Temperature: N °C | Pressure: N hPa (either or both)
+ * - servo: Servo angle: N
  * - custom:   Light level: N | Gas level: N | IR level: N
  *
  * @param {string} line
@@ -112,13 +113,20 @@ export function parseSerialLineToReading(line, ctx) {
           if (Number.isFinite(Number(o.pressure))) data.pressure = Number(o.pressure);
           if (Object.keys(data).length) return { deviceId: did, sensorType: 'bmp280', data };
         }
+        if (st === 'servo' && Number.isFinite(Number(o.angle))) {
+          return {
+            deviceId: did,
+            sensorType: 'servo',
+            data: { angle: Number(o.angle) },
+          };
+        }
       }
     } catch {
       /* not valid JSON */
     }
   }
 
-  // Arduino DHT example: Humidity: 45.00%  Temperature: 22.00°C
+  // DHT-style serial line example: Humidity: 45.00%  Temperature: 22.00°C
   if (sensorType === 'dht11') {
     const si = t.match(/^SIMA\s*(\{.+\})\s*$/);
     if (si) {
@@ -147,7 +155,7 @@ export function parseSerialLineToReading(line, ctx) {
   }
 
   if (sensorType === 'soil_moisture') {
-    const m1 = t.match(/Moisture\s+Level:\s*([\d.-]+)\s*%?/i);
+    const m1 = t.match(/Moisture(?:\s+Level)?:\s*([\d.-]+)\s*%?/i);
     if (m1) {
       return {
         deviceId,
@@ -204,13 +212,13 @@ export function parseSerialLineToReading(line, ctx) {
     const det = t.match(/Detection:\s*(0|1|true|false|yes|no|high|low|on|off|detected|clear)\b/i);
     if (det) {
       const v = det[1].toLowerCase();
-      const on = v === '1' || v === 'true' || v === 'yes' || v === 'high' || v === 'on' || v === 'detected';
-      return { deviceId, sensorType: 'ir_sensor', data: { irDetected: on } };
+      const detected = v === '0' || v === 'true' || v === 'yes' || v === 'low' || v === 'on' || v === 'detected';
+      return { deviceId, sensorType: 'ir_sensor', data: { irDetected: detected } };
     }
-    if (/\bIR\s*[:=]\s*(1|true|yes|detected|HIGH|on)\b/i.test(t)) {
+    if (/\bIR\s*[:=]\s*(0|true|yes|detected|LOW|on)\b/i.test(t)) {
       return { deviceId, sensorType: 'ir_sensor', data: { irDetected: true } };
     }
-    if (/\bIR\s*[:=]\s*(0|false|no|clear|LOW|off)\b/i.test(t)) {
+    if (/\bIR\s*[:=]\s*(1|false|no|clear|HIGH|off)\b/i.test(t)) {
       return { deviceId, sensorType: 'ir_sensor', data: { irDetected: false } };
     }
   }
@@ -253,6 +261,13 @@ export function parseSerialLineToReading(line, ctx) {
     if (press) data.pressure = Number(press[1]);
     if (Object.keys(data).length) {
       return { deviceId, sensorType: 'bmp280', data };
+    }
+  }
+
+  if (sensorType === 'servo') {
+    const a = t.match(/Servo\\s*angle\\s*:\\s*([\\d.-]+)/i) || t.match(/\\bangle\\s*[:=]\\s*([\\d.-]+)/i);
+    if (a) {
+      return { deviceId, sensorType: 'servo', data: { angle: Number(a[1]) } };
     }
   }
 

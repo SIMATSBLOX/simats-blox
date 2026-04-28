@@ -10,6 +10,7 @@ export const SENSOR_TYPES = [
   'soil_moisture',
   'rain_sensor',
   'ir_sensor',
+  'servo',
   /** Flat JSON object in `data` (numbers, strings, booleans only). */
   'custom',
 ];

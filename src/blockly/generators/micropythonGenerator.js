@@ -15,7 +15,7 @@ const Order = {
   CONDITIONAL: 15,
 };
 
-/** Same A0–A5 → GPIO map as Arduino path for ESP32 DevKit-style boards */
+/** A0–A5 style labels → common ADC1 GPIOs on many ESP32 DevKit boards */
 const ESP32_ANALOG_GPIO = Object.freeze({
   A0: 36,
   A1: 39,
@@ -24,6 +24,62 @@ const ESP32_ANALOG_GPIO = Object.freeze({
   A4: 32,
   A5: 33,
 });
+
+/** ESP32 ADC1-capable GPIOs (WiFi on — use only these for analogRead-style blocks). */
+const ESP32_ADC1_GPIO = new Set([32, 33, 34, 35, 36, 39]);
+
+/** ESP32 (classic WROOM/WROVER) touch-capable GPIOs — see MicroPython ESP32 quickref. */
+const ESP32_TOUCH_PAD_CLASSIC = new Set([0, 2, 4, 12, 13, 14, 15, 27, 32, 33]);
+
+function noteInvalidTouchPad(gen, requested, use) {
+  const nk = `%mp_touch_pad_note_${requested}`;
+  if (gen.definitions_[nk]) return;
+  gen.definitions_[nk] =
+    `# Touch: GPIO ${requested} is not a touch pad on ESP32 (pads: 0,2,4,12–15,27,32,33). Using ${use}.\n`;
+}
+
+/**
+ * TouchPad GPIO from a Blockly numeric pin field (invalid → 14 + comment).
+ * @param {import('blockly/core/generator').CodeGenerator} gen
+ * @param {import('blockly/core/block').Block} block
+ */
+function touchGpioFromBlock(gen, block, fieldName, def) {
+  const requested = digitalGpio(block, fieldName, def);
+  if (ESP32_TOUCH_PAD_CLASSIC.has(requested)) return requested;
+  const n = 14;
+  noteInvalidTouchPad(gen, requested, n);
+  return n;
+}
+
+/**
+ * TouchPad GPIO from a raw number (labeled blocks). Invalid → 14 + comment.
+ * @param {import('blockly/core/generator').CodeGenerator} gen
+ */
+function touchGpioNumber(gen, raw) {
+  const r = Number(raw);
+  const requested = Number.isFinite(r) ? clampInt(r, 0, 39) : 14;
+  if (ESP32_TOUCH_PAD_CLASSIC.has(requested)) return requested;
+  const n = 14;
+  noteInvalidTouchPad(gen, requested, n);
+  return n;
+}
+
+/**
+ * Numeric APIN field → valid ADC1 GPIO (invalid pins e.g. 21 map to 34).
+ * @param {import('blockly/core/block').Block} block
+ * @param {string} fieldName
+ * @param {number} fallback
+ */
+function adcGpioFromBlock(block, fieldName, fallback) {
+  const n = fieldNumberBlock(block, fieldName, fallback, 0, 39);
+  if (ESP32_ADC1_GPIO.has(n)) return n;
+  return 34;
+}
+
+/** MicroPython expression: ADC raw 0–4095 → percent 0–100 (float). */
+function adcReadPercentExpr(gpio) {
+  return `(adc${gpio}.read() / 4095.0 * 100.0)`;
+}
 
 function safeFieldValue(block, name, fallback = '') {
   try {
@@ -178,28 +234,56 @@ function isDhtSerialBridgeMergeFollower(block) {
   const a = dhtValueBlockSpec(prev.getInputTargetBlock('VAL'));
   const b = dhtValueBlockSpec(block.getInputTargetBlock('VAL'));
   if (!dhtSpecsMatchPinsAndType(a, b)) return false;
-  return a.role === 'temp' && b.role === 'hum';
+  return (
+    (a.role === 'temp' && b.role === 'hum') ||
+    (a.role === 'hum' && b.role === 'temp')
+  );
 }
 
 /**
- * Two chained printlns: DHT temperature then humidity → one line for parseSerialLineToReading (dht11).
+ * Two chained printlns: DHT temp+hum (either order) → one line for parseSerialLineToReading (dht11).
  * @param {import('blockly/core/block').Block} block
  * @param {import('blockly/core/generator').CodeGenerator} gen
  */
 function tryEmitMicropythonDhtSerialBridgePrintln(block, gen) {
   const a = dhtValueBlockSpec(block.getInputTargetBlock('VAL'));
-  if (!a || a.role !== 'temp') return null;
+  if (!a) return null;
   const next = block.getNextBlock();
   if (!next || next.type !== 'comm_serial_println') return null;
   const b = dhtValueBlockSpec(next.getInputTargetBlock('VAL'));
-  if (!b || b.role !== 'hum' || !dhtSpecsMatchPinsAndType(a, b)) return null;
+  if (!b || !dhtSpecsMatchPinsAndType(a, b)) return null;
+  if (!((a.role === 'temp' && b.role === 'hum') || (a.role === 'hum' && b.role === 'temp'))) return null;
   try {
     ensureMpyDht(gen, a.pin, a.typ);
   } catch {
     return null;
   }
   const id = dhtMpyId(a.pin, a.typ);
-  return `_dht_br = _hw_dht_pair_${id}()\nprint("Humidity: {:.1f} % Temperature: {:.1f} °C".format(_dht_br[1], _dht_br[0]))\n`;
+  return `_dht_br = _hw_dht_pair_${id}()\nprint("Humidity: {:.2f} % Temperature: {:.2f} °C".format(_dht_br[1], _dht_br[0]))\n`;
+}
+
+/**
+ * One println with only DHT temp or humidity → still emit full labeled line (one measure()).
+ * @param {import('blockly/core/block').Block} block
+ * @param {import('blockly/core/generator').CodeGenerator} gen
+ */
+function tryMicropythonDhtSingleFullLinePrintln(block, gen) {
+  const vb = block.getInputTargetBlock('VAL');
+  if (!vb) return null;
+  const spec = dhtValueBlockSpec(vb);
+  if (!spec || (spec.role !== 'temp' && spec.role !== 'hum')) return null;
+  const next = block.getNextBlock();
+  if (next && next.type === 'comm_serial_println') {
+    const b = dhtValueBlockSpec(next.getInputTargetBlock('VAL'));
+    if (b && dhtSpecsMatchPinsAndType(spec, b) && spec.role !== b.role) return null;
+  }
+  try {
+    ensureMpyDht(gen, spec.pin, spec.typ);
+  } catch {
+    return null;
+  }
+  const id = dhtMpyId(spec.pin, spec.typ);
+  return `_dht_br = _hw_dht_pair_${id}()\nprint("Humidity: {:.2f} % Temperature: {:.2f} °C".format(_dht_br[1], _dht_br[0]))\n`;
 }
 
 /**
@@ -216,33 +300,35 @@ function tryMicropythonLabeledSensorPrintln(block, gen) {
     return `print("Distance: {:.2f} cm".format(${code}))\n`;
   }
   if (t === 'sensor_soil') {
-    return `print("Moisture Level: {:.1f} %".format(float(${code})))\n`;
+    return `print("Moisture: {:.2f} %".format(float(${code})))\n`;
   }
   if (t === 'sensor_ldr') {
-    return `print("Light level: {}".format(int(${code})))\n`;
+    return `print("Light level: {}".format(int(round(float(${code})))))\n`;
   }
   if (t === 'sensor_gas') {
-    return `print("Gas level: {}".format(int(${code})))\n`;
+    return `print("Gas level: {}".format(int(round(float(${code})))))\n`;
   }
   if (t === 'sensor_analog_mblock') {
     const tag = safeFieldValue(vb, 'ASTYPE', 'LDR');
     if (tag === 'SOIL') {
-      return `print("Moisture Level: {:.1f} %".format(float(${code})))\n`;
+      return `print("Moisture: {:.2f} %".format(float(${code})))\n`;
     }
     if (tag === 'GAS') {
-      return `print("Gas level: {}".format(int(${code})))\n`;
+      return `print("Gas level: {}".format(int(round(float(${code})))))\n`;
     }
     if (tag === 'RAIN') {
-      return `print("Rain level: {}".format(int(${code})))\n`;
+      return `print("Rain level: {}".format(int(round(float(${code})))))\n`;
     }
-    return `print("Light level: {}".format(int(${code})))\n`;
+    return `print("Light level: {}".format(int(round(float(${code})))))\n`;
   }
   if (t === 'sensor_bmp280_mblock') {
-    const fld = safeFieldValue(vb, 'BMPFIELD', 'TEMP');
-    if (fld === 'PRESS') {
-      return `print("Pressure: {:.1f} hPa".format(float(${code})))\n`;
-    }
-    return `print("Temperature: {:.1f} °C".format(float(${code})))\n`;
+    return `print("BMP280 not supported")\n`;
+  }
+  if (t === 'mp_touch_read') {
+    return `print("Touch: {}".format(int(${code})))\n`;
+  }
+  if (t === 'touch_module_read') {
+    return `print("Detection: {}".format(1 if ${code} else 0))\n`;
   }
   if (t === 'sensor_digital_mblock' || t === 'input_pir_read') {
     return `print("Detection: {}".format(1 if ${code} else 0))\n`;
@@ -393,7 +479,8 @@ function partitionBoardStartsChains(generator, workspace) {
       }
 
       try {
-        const code = generator.blockToCode(b);
+        const fn = generator.forBlock?.[t];
+        const code = typeof fn === 'function' ? fn(b, generator) : generator.blockToCode(b);
         if (code && typeof code === 'string' && code.trim()) {
           setupChunks.push(code.trimEnd());
         }
@@ -470,14 +557,219 @@ function ensureAdc(gen, gpio) {
 
 function ensureTouch(gen, n) {
   const k = `%mp_touch_${n}`;
+  const hk = '%mp_touch_helper';
+  if (!gen.definitions_[hk]) {
+    gen.definitions_[hk] = `
+def _hw_touch_raw(_tp):
+    # Touch FSM / first samples can fail briefly after init (ESP-IDF); retry reads and bogus values.
+    for attempt in range(16):
+        try:
+            _v = _tp.read()
+            if _v is None:
+                raise ValueError("touch read None")
+            _iv = int(_v)
+            if _iv >= 0:
+                return _iv
+        except Exception:
+            pass
+        try:
+            time.sleep_ms(2 + (attempt if attempt < 6 else 6))
+        except Exception:
+            pass
+    return -1
+
+def _hw_touch_read(_tp):
+    return _hw_touch_raw(_tp)
+
+def _hw_touch_active_value(_tp, _th):
+    _v = _hw_touch_raw(_tp)
+    if _v < 0:
+        return 0
+    return _v if _v < int(_th) else 0
+`;
+  }
   if (gen.definitions_[k]) return;
   gen.definitions_[k] = `touch${n} = TouchPad(Pin(${n}))\n`;
+  const wk = '%mp_touch_post_init_delay';
+  if (!gen.definitions_[wk]) {
+    gen.definitions_[wk] =
+      'try:\n    time.sleep_ms(100)\nexcept Exception:\n    pass\n';
+  }
 }
 
 function ensurePwm(gen, n, freq) {
   const k = `%mp_pwm_${n}`;
   if (!gen.definitions_[k]) {
     gen.definitions_[k] = `pwm${n} = PWM(Pin(${n}), freq=${freq})\n`;
+  }
+}
+
+function ensureNeoPixel(gen, n, count) {
+  ensureImp(gen, 'import neopixel');
+  ensureImp(gen, 'from machine import Pin');
+  const px = clampInt(count, 1, 300);
+  const key = '%mp_neopixel_setup';
+  if (!gen.definitions_[key]) {
+    gen.definitions_[key] =
+      `NP_PIN = ${n}\n` +
+      `NP_COUNT = ${px}\n` +
+      `# Free the pin from PWM (e.g. GPIO18 = VSPI SCK on many ESP32 boards) so NeoPixel/RMT can drive it\n` +
+      `try:\n` +
+      `    PWM(Pin(NP_PIN), freq=1000).deinit()\n` +
+      `except Exception:\n` +
+      `    pass\n` +
+      `_np_pin = Pin(NP_PIN, Pin.OUT)\n` +
+      `try:\n` +
+      `    time.sleep_ms(30)\n` +
+      `except Exception:\n` +
+      `    pass\n` +
+      `try:\n` +
+      `    np = neopixel.NeoPixel(_np_pin, NP_COUNT, timing=1)\n` +
+      `except TypeError:\n` +
+      `    np = neopixel.NeoPixel(_np_pin, NP_COUNT)\n` +
+      `try:\n` +
+      `    for _npz in range(NP_COUNT):\n` +
+      `        np[_npz] = (0, 0, 0)\n` +
+      `    np.write()\n` +
+      `except Exception:\n` +
+      `    pass\n` +
+      `try:\n` +
+      `    print("NeoPixel pin=%d count=%d" % (NP_PIN, NP_COUNT))\n` +
+      `except Exception:\n` +
+      `    pass\n`;
+  }
+}
+
+function ensureMax30102Helper(gen, sda, scl) {
+  const pinSda = clampInt(sda, 0, 39);
+  const pinScl = clampInt(scl, 0, 39);
+  const defs = gen.definitions_;
+  defs['%mp_max30102_setup'] =
+    `MAX30102_SDA = ${pinSda}\n` +
+    `MAX30102_SCL = ${pinScl}\n` +
+    `MAX30102_ADDR = 0x57\n` +
+    `max30102_i2c = None\n` +
+    `max30102_bus_id = -1\n` +
+    `# Polling mode: INT pin not used.\n`;
+  if (!defs['%mp_max30102_helper']) {
+    defs['%mp_max30102_helper'] = `
+_max30102_baseline = None
+_max30102_noise = 400.0
+_max30102_was_high = False
+_max30102_last_beat_ms = 0
+_max30102_bpm = 0.0
+_max30102_rates = [0, 0, 0, 0]
+_max30102_rate_spot = 0
+_max30102_avg = 0
+
+def _max30102_open_i2c():
+    global max30102_i2c, max30102_bus_id
+    for _bus_id in (0, 1):
+        try:
+            _bus = I2C(_bus_id, scl=Pin(MAX30102_SCL), sda=Pin(MAX30102_SDA), freq=400000)
+            _bus.scan()
+            max30102_i2c = _bus
+            max30102_bus_id = _bus_id
+            return True
+        except Exception:
+            continue
+    max30102_i2c = None
+    max30102_bus_id = -1
+    return False
+
+def max30102_scan():
+    try:
+        if max30102_i2c is None and not _max30102_open_i2c():
+            return []
+        return max30102_i2c.scan()
+    except Exception:
+        return []
+
+def _max30102_write(reg, val):
+    max30102_i2c.writeto_mem(MAX30102_ADDR, reg, bytes([val & 0xFF]))
+
+def _max30102_read(reg, n=1):
+    return max30102_i2c.readfrom_mem(MAX30102_ADDR, reg, n)
+
+def max30102_init():
+    try:
+        if max30102_i2c is None and not _max30102_open_i2c():
+            return False
+        if MAX30102_ADDR not in max30102_scan():
+            return False
+        _max30102_write(0x09, 0x40)  # mode config reset
+        time.sleep_ms(20)
+        _max30102_write(0x04, 0x00)  # FIFO_WR_PTR reset
+        _max30102_write(0x05, 0x00)  # OVF_COUNTER reset
+        _max30102_write(0x06, 0x00)  # FIFO_RD_PTR reset
+        _max30102_write(0x08, 0x4F)  # FIFO config: sample avg + rollover
+        _max30102_write(0x09, 0x03)  # SpO2 mode (RED + IR)
+        _max30102_write(0x0A, 0x27)  # SPO2 config: 100 Hz, 411 us, ADC range
+        _max30102_write(0x0C, 0x3F)  # LED1 pulse amplitude (RED)
+        _max30102_write(0x0D, 0x3F)  # LED2 pulse amplitude (IR)
+        _max30102_write(0x02, 0x00)  # clear interrupts
+        _max30102_write(0x03, 0x00)
+        time.sleep_ms(30)
+        return True
+    except OSError:
+        return False
+
+def max30102_read_raw():
+    try:
+        wr = _max30102_read(0x04)[0]  # FIFO_WR_PTR
+        rd = _max30102_read(0x06)[0]  # FIFO_RD_PTR
+        # Some breakout/module variants keep pointers equal while still returning valid FIFO bytes.
+        # Try reading one sample anyway and only report None on all-zero payload.
+        d = _max30102_read(0x07, 6)   # FIFO_DATA (RED[3], IR[3])
+        red = ((d[0] << 16) | (d[1] << 8) | d[2]) & 0x03FFFF
+        ir = ((d[3] << 16) | (d[4] << 8) | d[5]) & 0x03FFFF
+        if wr == rd and red == 0 and ir == 0:
+            return None
+        return (ir, red)
+    except OSError:
+        return None
+
+def max30102_pulse_reading():
+    global _max30102_baseline, _max30102_noise, _max30102_was_high
+    global _max30102_last_beat_ms, _max30102_bpm, _max30102_rates, _max30102_rate_spot, _max30102_avg
+    _m = max30102_read_raw()
+    if _m is None:
+        return (0, _max30102_bpm, _max30102_avg)
+    _ir = int(_m[0])
+    if _max30102_baseline is None:
+        _max30102_baseline = float(_ir)
+        return (_ir, _max30102_bpm, _max30102_avg)
+    _max30102_baseline = (_max30102_baseline * 0.95) + (_ir * 0.05)
+    _ac = float(_ir) - _max30102_baseline
+    _abs_ac = abs(_ac)
+    _max30102_noise = (_max30102_noise * 0.94) + (_abs_ac * 0.06)
+    # Reflective PPG often shows systole as an IR *dip* (negative AC). Use inverted
+    # peak so one edge detector works; keep floor low so small pleth swings still count.
+    _dc = max(1.0, abs(float(_ir)))
+    _th = max(45.0, _max30102_noise * 1.85, _dc * 0.00012)
+    _sig = -_ac
+    _high = _sig > _th
+    _now = time.ticks_ms()
+    if _high and (not _max30102_was_high):
+        if _max30102_last_beat_ms > 0:
+            _delta = time.ticks_diff(_now, _max30102_last_beat_ms)
+            if 280 <= _delta <= 4000:
+                _bpm = 60000.0 / _delta
+                if 15.0 < _bpm < 220.0:
+                    _max30102_bpm = _bpm
+                    _max30102_rates[_max30102_rate_spot] = int(_bpm)
+                    _max30102_rate_spot = (_max30102_rate_spot + 1) % len(_max30102_rates)
+                    _sum = 0
+                    _cnt = 0
+                    for _r in _max30102_rates:
+                        if _r > 0:
+                            _sum += _r
+                            _cnt += 1
+                    _max30102_avg = int(_sum / _cnt) if _cnt else 0
+        _max30102_last_beat_ms = _now
+    _max30102_was_high = _high
+    return (_ir, _max30102_bpm, _max30102_avg)
+`;
   }
 }
 
@@ -497,8 +789,8 @@ def set_servo_angle(pin, angle):
     _s = _hw_servo_map.get(_p)
     if _s is None:
         return
-    duty = int(1638 + (_a / 180) * (8192 - 1638))
-    _s.duty_u16(duty)
+    _duty = int(26 + (_a / 180.0) * 102)
+    _s.duty(_duty)
 `;
 }
 
@@ -527,7 +819,7 @@ def _hw_ultra_cm(trig_n, echo_n, timeout_us=30000):
     time.sleep_us(10)
     _t.value(0)
     try:
-        _p = machine.time_pulse_us(_e, 1, timeout_us)
+        _p = time_pulse_us(_e, 1, timeout_us)
     except AttributeError:
         raise RuntimeError(
             "Ultrasonic block needs machine.time_pulse_us — use a recent ESP32 MicroPython build (e.g. 1.14+)."
@@ -579,7 +871,7 @@ function installSafeBlockToCodeWrapper(gen) {
     const type = block.type || 'unknown';
     if (typeof gen.forBlock[type] !== 'function') {
       if (block.outputConnection) {
-        return ['(0)', Order.ATOMIC];
+        return ['(float("nan"))', Order.ATOMIC];
       }
       return `# Unsupported block: ${type}\n`;
     }
@@ -588,7 +880,7 @@ function installSafeBlockToCodeWrapper(gen) {
     } catch (err) {
       console.warn('[mpy codegen] block', type, err);
       if (block.outputConnection) {
-        return ['(0)', Order.ATOMIC];
+        return ['(float("nan"))', Order.ATOMIC];
       }
       return `# Error generating ${type}: ${String(err?.message || err)}\n`;
     }
@@ -751,9 +1043,81 @@ function registerMicroPythonHardware(gen) {
 
   gen.forBlock['mp_touch_read'] = (block, g) => {
     void g;
-    const n = digitalGpio(block, 'DPIN', 13);
+    const n = touchGpioFromBlock(gen, block, 'DPIN', 14);
     ensureTouch(gen, n);
-    return [`touch${n}.read()`, Order.ATOMIC];
+    return [`_hw_touch_read(touch${n})`, Order.ATOMIC];
+  };
+
+  gen.forBlock['touch_module_read'] = (block, g) => {
+    void g;
+    const n = digitalGpio(block, 'DPIN', 4);
+    const mode = safeFieldValue(block, 'MODE', 'NORMAL');
+    if (!gen.definitions_[`%mp_pin_${n}`]) ensurePinIn(gen, n);
+    const active = mode === 'INVERTED' ? 0 : 1;
+    return [`(pin${n}.value() == ${active})`, Order.ATOMIC];
+  };
+
+  gen.forBlock['mp_touch_active_value'] = (block, g) => {
+    void g;
+    const n = touchGpioFromBlock(gen, block, 'DPIN', 14);
+    const th = fieldNumberBlock(block, 'THRESH', 220, 1, 2000);
+    ensureTouch(gen, n);
+    return [`_hw_touch_active_value(touch${n}, ${th})`, Order.ATOMIC];
+  };
+
+  gen.forBlock['mp_max30102_setup'] = (block, g) => {
+    void g;
+    const sda = digitalGpio(block, 'SDA', 21);
+    const scl = digitalGpio(block, 'SCL', 22);
+    ensureMax30102Helper(gen, sda, scl);
+    return `print("MAX30102 init: {}".format("OK" if max30102_init() else "FAIL"))\n`;
+  };
+
+  gen.forBlock['mp_max30102_print_raw'] = (block, g) => {
+    void block;
+    void g;
+    if (!gen.definitions_['%mp_max30102_setup']) {
+      ensureMax30102Helper(gen, 21, 22);
+    }
+    const ind = gen.INDENT;
+    return (
+      `# BPM needs several samples per second; burst read then one Serial line.\n` +
+      `_pulse = (0, 0.0, 0)\n` +
+      `for _mpx in range(50):\n` +
+      `${ind}_pulse = max30102_pulse_reading()\n` +
+      `${ind}time.sleep_ms(18)\n` +
+      `print("IR={}, BPM={:.2f}, AVG BPM={}".format(int(_pulse[0]), float(_pulse[1]), int(_pulse[2])))\n`
+    );
+  };
+
+  gen.forBlock['mp_i2c_scan'] = (block, g) => {
+    void g;
+    const sda = digitalGpio(block, 'SDA', 21);
+    const scl = digitalGpio(block, 'SCL', 22);
+    return (
+      `_i2c_scan_bus = I2C(0, scl=Pin(${scl}), sda=Pin(${sda}), freq=400000)\n` +
+      `_i2c_scan_addrs = _i2c_scan_bus.scan()\n` +
+      `print("I2C scan SDA=${sda} SCL=${scl}: {}".format(_i2c_scan_addrs))\n`
+    );
+  };
+
+  gen.forBlock['mp_neopixel_setup'] = (block, g) => {
+    void g;
+    const n = digitalGpio(block, 'DPIN', 18);
+    const count = fieldNumberBlock(block, 'COUNT', 8, 1, 300);
+    ensureNeoPixel(gen, n, count);
+    return '';
+  };
+
+  gen.forBlock['mp_neopixel_fill'] = (block, g) => {
+    void g;
+    const r = fieldNumberBlock(block, 'R', 255, 0, 255);
+    const gg = fieldNumberBlock(block, 'G', 0, 0, 255);
+    const b = fieldNumberBlock(block, 'B', 0, 0, 255);
+    if (!gen.definitions_['%mp_neopixel_setup']) {
+      ensureNeoPixel(gen, 18, 8);
+    }
+    return `for _i in range(NP_COUNT):\n${gen.INDENT}np[_i] = (${r}, ${gg}, ${b})\nnp.write()\n`;
   };
 
   gen.forBlock['mp_display_i2c_setup'] = (block, g) => {
@@ -762,18 +1126,173 @@ function registerMicroPythonHardware(gen) {
     const h = fieldNumberBlock(block, 'H', 64, 8, 128);
     const scl = digitalGpio(block, 'SCL', 22);
     const sda = digitalGpio(block, 'SDA', 21);
-    ensureSsd1306Import(gen);
     gen.definitions_[`%mp_oled`] =
-      `i2c = I2C(0, scl=Pin(${scl}), sda=Pin(${sda}), freq=400000)\n` +
-      `display = ssd1306.SSD1306_I2C(${w}, ${h}, i2c)\n`;
-    return '';
+      `display = None\n` +
+      `display_mode = "none"\n` +
+      `lcd_i2c = None\n` +
+      `lcd_addr = 0\n` +
+      `display_i2c_scan = []\n` +
+      `try:\n` +
+      `    import ssd1306\n` +
+      `    i2c = I2C(0, scl=Pin(${scl}), sda=Pin(${sda}), freq=400000)\n` +
+      `    display = ssd1306.SSD1306_I2C(${w}, ${h}, i2c)\n` +
+      `    display_mode = "oled"\n` +
+      `    try:\n` +
+      `        display_i2c_scan = i2c.scan()\n` +
+      `    except Exception:\n` +
+      `        display_i2c_scan = []\n` +
+      `except Exception:\n` +
+      `    try:\n` +
+      `        i2c = I2C(0, scl=Pin(${scl}), sda=Pin(${sda}), freq=100000)\n` +
+      `        display_i2c_scan = i2c.scan()\n` +
+      `        _cands = [a for a in display_i2c_scan if (0x20 <= int(a) <= 0x3F)]\n` +
+      `        _pref = []\n` +
+      `        if 0x27 in _cands:\n` +
+      `            _pref.append(0x27)\n` +
+      `        if 0x3F in _cands and 0x3F not in _pref:\n` +
+      `            _pref.append(0x3F)\n` +
+      `        for _a in _cands:\n` +
+      `            if _a not in _pref:\n` +
+      `                _pref.append(_a)\n` +
+      `        for _a in _pref:\n` +
+      `            try:\n` +
+      `                i2c.writeto(_a, b'\\x00')\n` +
+      `                lcd_i2c = i2c\n` +
+      `                lcd_addr = _a\n` +
+      `                display_mode = "lcd16x2"\n` +
+      `                break\n` +
+      `            except Exception:\n` +
+      `                pass\n` +
+      `    except Exception:\n` +
+      `        display_mode = "none"\n`;
+    if (!gen.definitions_['%mp_oled_print_mirror']) {
+      gen.definitions_['%mp_oled_print_mirror'] = `
+_orig_print = print
+_hw_oled_y = 0
+_hw_lcd_row = 0
+_lcd_map = 0
+
+def _lcd_pack(_nib, _rs):
+    # map0: P0=RS, P2=E, P3=BL, P4..P7=D4..D7 (common)
+    # map1: P2=RS, P0=E, P3=BL, P4..P7=D4..D7 (alt backpacks)
+    if _lcd_map == 0:
+        return (((_nib & 0x0F) << 4) | (0x01 if _rs else 0x00) | 0x08, 0x04)
+    return (((_nib & 0x0F) << 4) | (0x04 if _rs else 0x00) | 0x08, 0x01)
+
+def _lcd_write4(_nib, _rs):
+    if lcd_i2c is None or not lcd_addr:
+        return
+    _d, _e = _lcd_pack(_nib, _rs)
+    try:
+        lcd_i2c.writeto(lcd_addr, bytes([_d | _e]))
+        time.sleep_us(1)
+        lcd_i2c.writeto(lcd_addr, bytes([_d & ~_e]))
+    except Exception:
+        pass
+
+def _lcd_cmd(_c):
+    _lcd_write4((_c >> 4) & 0x0F, 0)
+    _lcd_write4(_c & 0x0F, 0)
+    if _c in (0x01, 0x02):
+        time.sleep_ms(2)
+    else:
+        time.sleep_us(50)
+
+def _lcd_data(_d):
+    _lcd_write4((_d >> 4) & 0x0F, 1)
+    _lcd_write4(_d & 0x0F, 1)
+    time.sleep_us(50)
+
+def _lcd_init():
+    global _lcd_map
+    if lcd_i2c is None or not lcd_addr:
+        return
+    # Standard PCF8574 backpack wiring (map 0). Clear screen only — no debug text.
+    _lcd_map = 0
+    time.sleep_ms(50)
+    _lcd_write4(0x03, 0)
+    time.sleep_ms(5)
+    _lcd_write4(0x03, 0)
+    time.sleep_us(200)
+    _lcd_write4(0x03, 0)
+    _lcd_write4(0x02, 0)
+    _lcd_cmd(0x28)
+    _lcd_cmd(0x0C)
+    _lcd_cmd(0x06)
+    _lcd_cmd(0x01)
+    time.sleep_ms(2)
+
+def _lcd_set_cursor(_col, _row):
+    _row = 0 if int(_row) <= 0 else 1
+    _base = 0x00 if _row == 0 else 0x40
+    _lcd_cmd(0x80 | (_base + max(0, min(15, int(_col)))))
+
+def _lcd_write_line(_row, _msg):
+    _lcd_set_cursor(0, _row)
+    _t = str(_msg)
+    if len(_t) < 16:
+        _t = _t + (" " * (16 - len(_t)))
+    else:
+        _t = _t[:16]
+    for _ch in _t:
+        _lcd_data(ord(_ch))
+
+def _hw_oled_line(_msg):
+    global _hw_oled_y, _hw_lcd_row
+    if display_mode == "oled":
+        try:
+            _t = str(_msg)
+            if len(_t) > 21:
+                _t = _t[:21]
+            if _hw_oled_y == 0:
+                display.fill(0)
+            display.text(_t, 0, _hw_oled_y)
+            display.show()
+            _hw_oled_y = (_hw_oled_y + 10) % 60
+        except Exception:
+            pass
+    elif display_mode == "lcd16x2":
+        try:
+            _lcd_write_line(_hw_lcd_row, _msg)
+            _hw_lcd_row = 1 - _hw_lcd_row
+        except Exception:
+            pass
+
+def _hw_display_text(_msg, _x=0, _y=0):
+    if display_mode == "oled":
+        try:
+            display.text(str(_msg), int(_x), int(_y))
+            display.show()
+        except Exception:
+            pass
+    elif display_mode == "lcd16x2":
+        _r = 1 if int(_y) >= 8 else 0
+        _lcd_write_line(_r, _msg)
+
+def print(*args, **kwargs):
+    _orig_print(*args, **kwargs)
+    if kwargs.get('end', '\\n') != '\\n':
+        return
+    _sep = kwargs.get('sep', ' ')
+    try:
+        _line = _sep.join([str(a) for a in args])
+    except Exception:
+        _line = ''
+    _hw_oled_line(_line)
+`;
+    }
+    return (
+      `if display_mode == "lcd16x2":\n` +
+      `${gen.INDENT}_lcd_init()\n` +
+      `_orig_print("Display mode: {} addr: {} scan: {}".format(display_mode, (hex(lcd_addr) if lcd_addr else "-"), display_i2c_scan))\n`
+    );
   };
 
   gen.forBlock['mp_display_text'] = (block, g) => {
     const t = g.valueToCode(block, 'TEXT', Order.NONE) || "''";
     const x = fieldNumberBlock(block, 'X', 0, 0, 127);
     const y = fieldNumberBlock(block, 'Y', 0, 0, 63);
-    return `display.text(str(${t}), ${x}, ${y})\ndisplay.show()\n`;
+    return `_hw_display_text(str(${t}), ${x}, ${y})\n`;
   };
 
   gen.forBlock['mp_pwm_write'] = (block, g) => {
@@ -826,11 +1345,9 @@ function registerMicroPythonHardware(gen) {
   gen.forBlock['output_servo_write'] = (block, g) => {
     void g;
     const n = digitalGpio(block, 'DPIN', 9);
-    const angleExpr =
-      (g.valueToCode(block, 'ANGLE', Order.NONE) || '').trim() ||
-      String(fieldNumberBlock(block, 'ANGLE', 90, 0, 180));
+    const angleExpr = String(fieldNumberBlock(block, 'ANGLE', 90, 0, 180));
     ensureServoPin(gen, n);
-    return `set_servo_angle(${n}, ${angleExpr})\n`;
+    return `set_servo_angle(${n}, ${angleExpr})\nprint("Servo angle: {}".format(int(${angleExpr})))\n`;
   };
 
   gen.forBlock['output_motor_run'] = gen.forBlock['board_analog_write'];
@@ -882,7 +1399,7 @@ function registerMicroPythonHardware(gen) {
     void g;
     const gpio = apinToGpio(block);
     ensureAdc(gen, gpio);
-    return [`adc${gpio}.read()`, Order.ATOMIC];
+    return [adcReadPercentExpr(gpio), Order.ATOMIC];
   };
 
   gen.forBlock['sensor_soil'] = gen.forBlock['sensor_ldr'];
@@ -899,6 +1416,8 @@ function registerMicroPythonHardware(gen) {
     }
     const merged = tryEmitMicropythonDhtSerialBridgePrintln(block, g);
     if (merged) return merged;
+    const dhtFull = tryMicropythonDhtSingleFullLinePrintln(block, g);
+    if (dhtFull) return dhtFull;
     const labeled = tryMicropythonLabeledSensorPrintln(block, g);
     if (labeled) return labeled;
     const v = stripInlinePyComment(g.valueToCode(block, 'VAL', Order.NONE) || '0');
@@ -1288,7 +1807,7 @@ function registerMicroPythonHardware(gen) {
   };
   gen.forBlock['esp32_read_analog_pin'] = (block, g) => {
     void g;
-    const gpio = digitalGpio(block, 'APIN_NUM', 32);
+    const gpio = adcGpioFromBlock(block, 'APIN_NUM', 32);
     ensureAdc(gen, gpio);
     return [`adc${gpio}.read()`, Order.ATOMIC];
   };
@@ -1296,9 +1815,10 @@ function registerMicroPythonHardware(gen) {
   gen.forBlock['esp32_set_pwm_pin'] = gen.forBlock['board_analog_write'];
   gen.forBlock['esp32_touch_read_labeled'] = (block, g) => {
     void g;
-    const gpio = Number(safeFieldValue(block, 'TPAD', '15')) || 15;
+    const raw = Number(safeFieldValue(block, 'TPAD', '15')) || 15;
+    const gpio = touchGpioNumber(gen, raw);
     ensureTouch(gen, gpio);
-    return [`touch${gpio}.read()`, Order.ATOMIC];
+    return [`_hw_touch_read(touch${gpio})`, Order.ATOMIC];
   };
   gen.forBlock['esp32_hall_value'] = (block, g) => {
     void g;
@@ -1375,8 +1895,8 @@ function registerMicroPythonHardware(gen) {
     const n = digitalGpio(block, 'DPIN', 2);
     const st = safeFieldValue(block, 'DSTYPE', 'PIR');
     if (!gen.definitions_[`%mp_pin_${n}`]) ensurePinIn(gen, n);
-    void st;
-    return [`(pin${n}.value() == 1)`, Order.ATOMIC];
+    const isActiveLowIr = st === 'IR';
+    return [`(pin${n}.value() == ${isActiveLowIr ? 0 : 1})`, Order.ATOMIC];
   };
   gen.forBlock['sensor_dht_mblock'] = (block, g) => {
     void g;
@@ -1386,15 +1906,19 @@ function registerMicroPythonHardware(gen) {
   };
   gen.forBlock['sensor_bmp280_mblock'] = (_block, g) => {
     void g;
+    if (!gen.definitions_['%bmp280_stub_note']) {
+      gen.definitions_['%bmp280_stub_note'] =
+        '# BMP280: I2C driver not generated here — block reads as NaN (add bmp280 library on device).\n';
+    }
     return ["float('nan')", Order.ATOMIC];
   };
   gen.forBlock['sensor_analog_mblock'] = (block, g) => {
     void g;
-    const gpio = digitalGpio(block, 'APIN', 32);
+    const gpio = adcGpioFromBlock(block, 'APIN', 32);
     const tag = safeFieldValue(block, 'ASTYPE', 'LDR');
     ensureAdc(gen, gpio);
     void tag;
-    return [`adc${gpio}.read()`, Order.ATOMIC];
+    return [adcReadPercentExpr(gpio), Order.ATOMIC];
   };
 
   const mpIot = (msg) => `# IoT / app: ${msg}\n`;
@@ -1482,9 +2006,9 @@ function registerMicroPythonHardware(gen) {
   };
 
   const mpDabble = (msg) => `# Dabble phone bridge: not available in generated MicroPython — ${msg}\n`;
-  gen.forBlock['dabble_enable_servo'] = () => mpDabble('on ESP32 use Arduino + DabbleESP32 (Controls.runServo1/2)');
+  gen.forBlock['dabble_enable_servo'] = () => mpDabble('on ESP32 use DabbleESP32 (Controls.runServo1/2)');
   gen.forBlock['dabble_enable_motor'] = (block, g) =>
-    `${mpDabble('Dabble Motor module maps to Controls.runMotor* on ESP32 Arduino + DabbleESP32')}${gen.forBlock['mblock_motor_connect'](block, g)}`;
+    `${mpDabble('Dabble Motor module maps to Controls.runMotor* on ESP32 with DabbleESP32')}${gen.forBlock['mblock_motor_connect'](block, g)}`;
   gen.forBlock['dabble_tactile_pressed'] = () => ['False', Order.ATOMIC];
   gen.forBlock['dabble_slide_switch'] = () => ['False', Order.ATOMIC];
   gen.forBlock['dabble_pot_value'] = () => ['0', Order.ATOMIC];
@@ -1533,7 +2057,7 @@ function sortDefinitionsBody(definitions) {
 }
 
 function fallbackMicroPython(note) {
-  return `""" ESP32 MicroPython — hardware block IDE """\n# ${note}\nfrom machine import Pin\nimport time\n\nwhile True:\n    time.sleep_ms(500)\n`;
+  return `""" ESP32 MicroPython — hardware block IDE """\n# ${note}\nfrom machine import Pin\nimport time\n\nwhile True:\n    time.sleep_ms(400)\n`;
 }
 
 /**
@@ -1579,7 +2103,7 @@ export function buildMicroPythonSketch(workspace) {
   const IND = gen.INDENT;
   const staticHead =
     '""" ESP32 MicroPython — generated from blocks (USB REPL / flashed main.py) """\n' +
-    'from machine import Pin, PWM, ADC, TouchPad, I2C\n' +
+    'from machine import Pin, PWM, ADC, TouchPad, I2C, time_pulse_us\n' +
     'import machine\n' +
     'import time\n';
 
@@ -1633,8 +2157,10 @@ export function buildMicroPythonSketch(workspace) {
     loopBody = `${loopWhen}${IND}time.sleep_ms(10)\n`;
   } else {
     const loopCore = `${loopWhen}${indentPy(loopRaw, IND)}\n`;
+    const hasSleep = /time\.sleep(?:_ms)?\s*\(/m.test(String(loopRaw || ''));
+    const loopYield = hasSleep ? '' : `${IND}time.sleep_ms(400)\n`;
     loopBody = mpyBlockHasExecutableLine(loopCore)
-      ? loopCore
+      ? `${loopCore}${loopYield}`
       : `${loopCore}${IND}time.sleep_ms(10)\n`;
   }
 

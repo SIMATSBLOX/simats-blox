@@ -65,6 +65,12 @@ export const SENSOR_ADD_PRESETS = [
     title: 'IR obstacle',
     subtitle: 'Obstacle / line (digital)',
   },
+  {
+    id: 'servo',
+    sensorType: 'servo',
+    title: 'Servo',
+    subtitle: 'Angle telemetry',
+  },
 ];
 
 /** @param {string} sensorType */

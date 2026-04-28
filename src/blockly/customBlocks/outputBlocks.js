@@ -57,7 +57,7 @@ export const outputBlockDefinitions = [
     previousStatement: null,
     nextStatement: null,
     style: 'actuator_blocks',
-    tooltip: 'Servo.write() — adds Servo.h helper in generated sketch.',
+    tooltip: 'Set servo angle (MicroPython preview uses PWM where supported).',
   },
   {
     type: 'output_motor_run',

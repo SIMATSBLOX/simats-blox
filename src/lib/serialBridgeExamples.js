@@ -1,24 +1,8 @@
-/** Print this from loop() after you read the DHT — one println = one Devices page update (when “Send lines to Devices” is on). */
-export const ARDUINO_DHT11_PRINT_BLOCK = `Serial.print("Humidity: ");
-Serial.print(h, 2);
-Serial.print("%  Temperature: ");
-Serial.print(t, 2);
-Serial.println("°C");`;
+/** Print this after reading the DHT — one line = one Devices page update (when “Send lines to Devices” is on). */
+export const MICROPYTHON_DHT11_PRINT_SNIPPET = `print(f"Humidity: {h:.1f}%  Temperature: {t:.1f}°C")`;
 
-/** Exact shape of one serial line the parser accepts for DHT11 / DHT22. */
+/** Exact shape of one serial line the parser accepts for DHT11 / DHT22 (copy helper on Devices). */
 export const SAMPLE_SERIAL_LINE_DHT11 = 'Humidity: 50.0 %  Temperature: 25.0 °C';
-
-/** Example lines matching serialReadingBridge.parseSerialLineToReading for other preset types. */
-export const SAMPLE_SERIAL_LINE_ULTRASONIC = 'Distance: 37.50 cm';
-export const SAMPLE_SERIAL_LINE_SOIL = 'Moisture Level: 420.0 %';
-export const SAMPLE_SERIAL_LINE_LM35 = 'Temperature: 29.4 °C';
-export const SAMPLE_SERIAL_LINE_IR = 'Detection: 1';
-export const SAMPLE_SERIAL_LINE_PIR = 'Detection: 0';
-export const SAMPLE_SERIAL_LINE_MQ2 = 'Gas level: 320';
-export const SAMPLE_SERIAL_LINE_LDR = 'Light level: 512';
-export const SAMPLE_SERIAL_LINE_RAIN = 'Rain level: 180';
-export const SAMPLE_SERIAL_LINE_BMP280_TEMP = 'Temperature: 24.5 °C';
-export const SAMPLE_SERIAL_LINE_BMP280_PRESSURE = 'Pressure: 1013.2 hPa';
 
 /**
  * @param {string} sensorType
@@ -53,6 +37,8 @@ export function exampleReadingBodyForSensor(sensorType, deviceId) {
         sensorType: 'bmp280',
         data: { temperature: 24.5, pressure: 1013.2 },
       };
+    case 'servo':
+      return { deviceId: id, sensorType: 'servo', data: { angle: 90 } };
     case 'custom':
       return { deviceId: id, sensorType: 'custom', data: { reading: 42, note: 'replace with your fields' } };
     default:

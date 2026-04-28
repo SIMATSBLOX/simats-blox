@@ -81,7 +81,7 @@ export default function KitConnectionChecklist({
       title: sampleOk ? 'Device key & sample code' : 'Program the board',
       subtitle: sampleOk
         ? hasKey
-          ? 'Copy C++ (ESP32 core) or MicroPython below.'
+          ? 'Copy the MicroPython sample below.'
           : 'Save the key in this browser (banner or Setup) to unlock copies.'
         : 'Use the Blockly IDE or your own firmware for this sensor type.',
       state: step2Done ? 'done' : step2Current ? 'current' : 'upcoming',

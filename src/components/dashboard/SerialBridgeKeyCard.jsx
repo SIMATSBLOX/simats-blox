@@ -9,7 +9,7 @@ import {
 import { postDeviceReading } from '../../api/readingApi.js';
 import { getReadingsPostUrl } from '../../lib/apiConfig.js';
 import {
-  ARDUINO_DHT11_PRINT_BLOCK,
+  MICROPYTHON_DHT11_PRINT_SNIPPET,
   SAMPLE_SERIAL_LINE_DHT11,
   exampleReadingBodyForSensor,
   formatExampleReadingJson,
@@ -195,7 +195,6 @@ export default function SerialBridgeKeyCard({ devices }) {
               value={apiKeyDraft}
               onChange={(e) => setApiKeyDraft(e.target.value)}
               autoComplete="off"
-              placeholder="From email / handout / regenerate"
               className="mt-0.5 w-full rounded border border-studio-border bg-[#14171b] px-2 py-1.5 font-mono text-xs text-slate-200"
             />
           </label>
@@ -266,9 +265,9 @@ export default function SerialBridgeKeyCard({ devices }) {
               type="button"
               variant="ghost"
               className="!text-[10px]"
-              onClick={() => void copyText('DHT print snippet copied.', ARDUINO_DHT11_PRINT_BLOCK)}
+              onClick={() => void copyText('DHT print snippet copied.', MICROPYTHON_DHT11_PRINT_SNIPPET)}
             >
-              Copy DHT Serial.print snippet
+              Copy DHT print snippet
             </Button>
             <Button
               type="button"

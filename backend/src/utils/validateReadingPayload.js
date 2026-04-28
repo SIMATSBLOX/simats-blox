@@ -105,6 +105,12 @@ export function validateReadingPayload(body) {
       }
       break;
     }
+    case 'servo': {
+      if (!Number.isFinite(Number(d.angle))) {
+        errors.push('data.angle must be a finite number.');
+      }
+      break;
+    }
     case 'custom': {
       const keys = Object.keys(d);
       if (keys.length === 0) {
@@ -186,6 +192,9 @@ export function validateReadingPayload(body) {
       normalizedData = out;
       break;
     }
+    case 'servo':
+      normalizedData.angle = Number(d.angle);
+      break;
     case 'custom': {
       const out = {};
       for (const k of Object.keys(d)) {

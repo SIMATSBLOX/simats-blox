@@ -11,6 +11,7 @@
 
 import {
   drainSerialRxFor,
+  pulseEsp32AutoResetToRun,
   waitForSerialRx,
   writeSerialText,
   writeSerialUtf8InChunks,
@@ -41,6 +42,14 @@ function devUploadPhase(phase) {
   if (import.meta.env.DEV) {
     console.debug('[mpy upload phase]', phase);
   }
+}
+
+/**
+ * ROM bootloader output means ESP32 is in download mode, not MicroPython REPL.
+ * @param {string} s
+ */
+function looksLikeEsp32BootloaderLog(s) {
+  return /waiting for download|DOWNLOAD_BOOT|boot:0x/i.test(s);
 }
 
 /**
@@ -164,25 +173,50 @@ export async function sendMicroPythonInterrupt() {
 }
 
 async function enterRawRepl() {
-  devMpyLog('enterRawRepl', 'Ctrl-A; wait for banner + raw ">" prompt (single RX wait — avoids missing >)');
-  // One waiter: if we used two sequential waitForSerialRx calls, the ">" line can arrive before the
-  // second subscription and the upload script would be sent before the REPL accepts paste (0-byte writes).
-  const ready = waitForSerialRx(
-    (buf) =>
-      /raw\s*REPL/i.test(buf) &&
-      (/CTRL-B/i.test(buf) || /Ctrl-B/i.test(buf)) &&
-      /\r?\n>/.test(buf),
-    5000,
-  );
-  await writeSerialText('\x01');
-  try {
-    await ready;
-    devMpyLog('enterRawRepl', 'banner + > ok');
-  } catch (e) {
-    devMpyLog('enterRawRepl', `wait failed: ${String(/** @type {Error} */ (e)?.message || e)}`);
-    await delay(280);
+  devMpyLog('enterRawRepl', 'Ctrl-A; require raw banner + ">" prompt');
+  // One waiter: if we used two sequential waits, ">" can arrive before the second subscription.
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    let acc = '';
+    const ready = waitForSerialRx(
+      (buf) => {
+        acc = buf;
+        const rawReady =
+          /raw\s*REPL/i.test(buf) &&
+          (/CTRL-B/i.test(buf) || /Ctrl-B/i.test(buf)) &&
+          /\r?\n>/.test(buf);
+        return rawReady || looksLikeEsp32BootloaderLog(buf);
+      },
+      5200,
+    );
+    await writeSerialText('\x01');
+    try {
+      await ready;
+      if (looksLikeEsp32BootloaderLog(acc)) {
+        throw new Error(
+          'ESP32 is in bootloader/download mode (waiting for download), not MicroPython REPL. Press EN/RESET once and keep BOOT released, then Upload again.',
+        );
+      }
+      devMpyLog('enterRawRepl', `banner + > ok (attempt ${attempt})`);
+      await delay(150);
+      return;
+    } catch (e) {
+      const msg = String(/** @type {Error} */ (e)?.message || e);
+      devMpyLog('enterRawRepl', `attempt ${attempt} failed: ${msg}`);
+      if (attempt >= 3) {
+        throw new Error(
+          'Could not enter MicroPython raw REPL on ESP32. Disconnect/reconnect USB, press EN/RESET once, then retry Upload.',
+        );
+      }
+      // Attempt 2: best-effort interrupt/drain. Attempt 3: also try USB auto-reset pulse.
+      if (attempt >= 2) {
+        const pulsed = await pulseEsp32AutoResetToRun();
+        devMpyLog('enterRawRepl', `auto-reset pulse ${pulsed ? 'applied' : 'not supported'}`);
+      }
+      await sendMicroPythonInterrupt();
+      await delay(160);
+      await drainSerialRxFor(140);
+    }
   }
-  await delay(150);
 }
 
 /** Ctrl-B: leave raw REPL back to `>>>` — wait for prompt before continuing. */
@@ -583,94 +617,124 @@ export async function uploadMicroPythonMainPy(sourceCode, options) {
   await enterRawRepl();
   devUploadPhase('raw REPL ready (banner + >)');
 
-  onStep('Writing main.py to flash…');
-  devUploadPhase('entered write phase — sending hex script + EOT');
-  if (import.meta.env.DEV) {
-    console.debug(
-      `[mpy write] shape=hex+ubinascii.unhexlify, hexChunks=${hexParts.length}, expectedUtf8Bytes=${expectedUtf8}`,
-    );
-    console.debug('[mpy write] full device script:\n', py);
-    devMpyLog('rawWrite', `script chars=${py.length}, firstHexChunkLen=${hexParts[0]?.length ?? 0}`);
-  }
-  devMpyLog('rawWrite', 'chunked UTF-8 write + Ctrl-D (EOT)');
-  let writeWaitAcc = '';
-  let writeDiagOnce = false;
-  const execDone = waitForSerialRx((buf) => {
-    writeWaitAcc = buf;
-    const accepted = rawMainPyWriteComplete(buf, expectedUtf8);
-    if (import.meta.env.DEV) {
-      if (accepted) {
-        const last = findLastMpywroteMatch(buf);
-        const got = last ? parseInt(last[1], 10) : NaN;
-        devMpyLog(
-          'rawWriteAccept',
-          `accLen=${buf.length} __MPYWROTE__=${Number.isFinite(got) ? got : '—'} expected=${expectedUtf8}`,
+  /** @type {string} */
+  let acc = '';
+  /** @type {Error | null} */
+  let lastWriteErr = null;
+  const MAX_WRITE_ATTEMPTS = 2;
+  for (let attempt = 1; attempt <= MAX_WRITE_ATTEMPTS; attempt++) {
+    try {
+      if (attempt > 1) {
+        onStep('Upload write timed out — re-syncing REPL and retrying once…');
+        // A transient USB hiccup can leave REPL state half-switched; force a clean raw-REPL re-entry.
+        await sendMicroPythonInterrupt();
+        await delay(180);
+        await drainSerialRxFor(140);
+        await enterRawRepl();
+      }
+      onStep(
+        attempt === 1
+          ? 'Writing main.py to flash…'
+          : `Writing main.py to flash (retry ${attempt}/${MAX_WRITE_ATTEMPTS})…`,
+      );
+      devUploadPhase('entered write phase — sending hex script + EOT');
+      if (import.meta.env.DEV) {
+        console.debug(
+          `[mpy write] shape=hex+ubinascii.unhexlify, hexChunks=${hexParts.length}, expectedUtf8Bytes=${expectedUtf8}`,
         );
-      } else if (!writeDiagOnce && buf.includes('__MPYWROTE__')) {
-        writeDiagOnce = true;
-        const ev = evaluateRawMainPyWriteComplete(buf, expectedUtf8);
-        const last = findLastMpywroteMatch(buf);
-        const got = last ? parseInt(last[1], 10) : NaN;
-        const eotA = last ? buf.indexOf(EOT, last.index + last[0].length) : -1;
-        const okFirst = eotA >= 0 ? rawReplOkPresentBefore(buf.slice(0, eotA)) : false;
-        devMpyLog(
-          'rawWriteRx',
-          `expected=${expectedUtf8} got=${got} accepted=${ev.ok} ${ev.ok ? '' : `reject=${ev.reason} `}okBeforeFirstEotOnly=${okFirst} accLen=${buf.length}`,
+        console.debug('[mpy write] full device script:\n', py);
+        devMpyLog('rawWrite', `script chars=${py.length}, firstHexChunkLen=${hexParts[0]?.length ?? 0}`);
+      }
+      devMpyLog('rawWrite', `chunked UTF-8 write + Ctrl-D (EOT), attempt=${attempt}/${MAX_WRITE_ATTEMPTS}`);
+      let writeWaitAcc = '';
+      let writeDiagOnce = false;
+      const execDone = waitForSerialRx((buf) => {
+        writeWaitAcc = buf;
+        const accepted = rawMainPyWriteComplete(buf, expectedUtf8);
+        if (import.meta.env.DEV) {
+          if (accepted) {
+            const last = findLastMpywroteMatch(buf);
+            const got = last ? parseInt(last[1], 10) : NaN;
+            devMpyLog(
+              'rawWriteAccept',
+              `accLen=${buf.length} __MPYWROTE__=${Number.isFinite(got) ? got : '—'} expected=${expectedUtf8}`,
+            );
+          } else if (!writeDiagOnce && buf.includes('__MPYWROTE__')) {
+            writeDiagOnce = true;
+            const ev = evaluateRawMainPyWriteComplete(buf, expectedUtf8);
+            const last = findLastMpywroteMatch(buf);
+            const got = last ? parseInt(last[1], 10) : NaN;
+            const eotA = last ? buf.indexOf(EOT, last.index + last[0].length) : -1;
+            const okFirst = eotA >= 0 ? rawReplOkPresentBefore(buf.slice(0, eotA)) : false;
+            devMpyLog(
+              'rawWriteRx',
+              `expected=${expectedUtf8} got=${got} accepted=${ev.ok} ${ev.ok ? '' : `reject=${ev.reason} `}okBeforeFirstEotOnly=${okFirst} accLen=${buf.length}`,
+            );
+          }
+        }
+        return accepted;
+      }, 25000);
+      await writeSerialUtf8InChunks(py + EOT, 2048);
+      let writeRecoveredFromTimeout = false;
+      try {
+        acc = await execDone;
+      } catch {
+        if (import.meta.env.DEV) {
+          console.debug('[mpy write] TIMEOUT diag:', formatWriteWaitTimeoutDiag(writeWaitAcc, expectedUtf8));
+          devUploadPhase(`write wait timed out — see [mpy write] TIMEOUT diag in console`);
+        }
+        if (rawMainPyWriteRecoveryAccepted(writeWaitAcc, expectedUtf8)) {
+          acc = writeWaitAcc;
+          writeRecoveredFromTimeout = true;
+          devMpyLog(
+            'rawWrite',
+            'RX wait timed out but board reported matching __MPYWROTE__ — continuing upload',
+          );
+          onStep('Write confirmed (device reported size).');
+        } else {
+          throw new Error(
+            'Timed out while writing main.py (raw REPL). Try Upload again, or reconnect the USB serial port.',
+          );
+        }
+      }
+      devUploadPhase(
+        writeRecoveredFromTimeout
+          ? 'write confirmed via recovery heuristic'
+          : 'write confirmed (__MPYWROTE__ + raw REPL OK + EOT)',
+      );
+      devMpyLog('rawWrite', `OK/EOT or recovery, rxLen=${acc.length}`);
+      const lastW = findLastMpywroteMatch(acc);
+      const gotRaw = lastW ? parseInt(lastW[1], 10) : NaN;
+      if (import.meta.env.DEV) {
+        console.debug('[mpy write] raw __MPYWROTE__ bytes=', gotRaw, 'expected=', expectedUtf8, 'match=', gotRaw === expectedUtf8);
+      }
+      if (!Number.isFinite(gotRaw) || gotRaw !== expectedUtf8) {
+        throw new Error(
+          `main.py write failed on the board (raw step reported ${gotRaw} bytes, preview is ${expectedUtf8} bytes). Try Upload again.`,
         );
       }
-    }
-    return accepted;
-  }, 25000);
-  await writeSerialUtf8InChunks(py + EOT, 2048);
-  let acc;
-  let writeRecoveredFromTimeout = false;
-  try {
-    acc = await execDone;
-  } catch {
-    if (import.meta.env.DEV) {
-      console.debug('[mpy write] TIMEOUT diag:', formatWriteWaitTimeoutDiag(writeWaitAcc, expectedUtf8));
-      devUploadPhase(`write wait timed out — see [mpy write] TIMEOUT diag in console`);
-    }
-    if (rawMainPyWriteRecoveryAccepted(writeWaitAcc, expectedUtf8)) {
-      acc = writeWaitAcc;
-      writeRecoveredFromTimeout = true;
-      devMpyLog(
-        'rawWrite',
-        'RX wait timed out but board reported matching __MPYWROTE__ — continuing upload',
-      );
-      onStep('Write confirmed (device reported size).');
-    } else {
-      throw new Error(
-        'Timed out while writing main.py (raw REPL). Try Upload again, or reconnect the USB serial port.',
-      );
-    }
-  }
-  devUploadPhase(
-    writeRecoveredFromTimeout
-      ? 'write confirmed via recovery heuristic'
-      : 'write confirmed (__MPYWROTE__ + raw REPL OK + EOT)',
-  );
-  devMpyLog('rawWrite', `OK/EOT or recovery, rxLen=${acc.length}`);
-  const lastW = findLastMpywroteMatch(acc);
-  const gotRaw = lastW ? parseInt(lastW[1], 10) : NaN;
-  if (import.meta.env.DEV) {
-    console.debug('[mpy write] raw __MPYWROTE__ bytes=', gotRaw, 'expected=', expectedUtf8, 'match=', gotRaw === expectedUtf8);
-  }
-  if (!Number.isFinite(gotRaw) || gotRaw !== expectedUtf8) {
-    throw new Error(
-      `main.py write failed on the board (raw step reported ${gotRaw} bytes, preview is ${expectedUtf8} bytes). Try Upload again.`,
-    );
-  }
-  if (acc.includes('Traceback')) {
-    const lastTb = acc.lastIndexOf('Traceback');
-    const afterLine = lastW.index + lastW[0].length;
-    const tracebackAfterWriteLine = lastTb >= afterLine;
-    if (tracebackAfterWriteLine) {
-      const head = acc.slice(lastTb, lastTb + 520);
-      if (!/KeyboardInterrupt/i.test(head)) {
-        throw new Error('MicroPython error while writing main.py — check Serial Monitor for Traceback.');
+      if (acc.includes('Traceback')) {
+        const lastTb = acc.lastIndexOf('Traceback');
+        const afterLine = lastW.index + lastW[0].length;
+        const tracebackAfterWriteLine = lastTb >= afterLine;
+        if (tracebackAfterWriteLine) {
+          const head = acc.slice(lastTb, lastTb + 520);
+          if (!/KeyboardInterrupt/i.test(head)) {
+            throw new Error('MicroPython error while writing main.py — check Serial Monitor for Traceback.');
+          }
+        }
+      }
+      lastWriteErr = null;
+      break;
+    } catch (e) {
+      lastWriteErr = e instanceof Error ? e : new Error(String(e));
+      if (attempt >= MAX_WRITE_ATTEMPTS) {
+        throw lastWriteErr;
       }
     }
+  }
+  if (lastWriteErr) {
+    throw lastWriteErr;
   }
 
   onStep('Switching to friendly REPL for live output…');

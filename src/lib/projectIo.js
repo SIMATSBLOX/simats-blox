@@ -126,7 +126,25 @@ export function formatSupabaseUserMessage(e) {
   ) {
     return 'permission denied';
   }
-  if (lower.includes('jwt') || lower.includes('invalid login') || lower.includes('refresh token') || lower.includes('session expired')) {
+  // Wrong password / unknown user — Supabase says "Invalid login credentials" (contains "invalid login").
+  // Must run before the JWT/session branch so we do not mislabel sign-in failures as "session expired".
+  if (
+    code === 'invalid_credentials' ||
+    lower.includes('invalid login credentials') ||
+    lower.includes('invalid credentials') ||
+    lower.includes('email not confirmed') ||
+    lower.includes('user not found')
+  ) {
+    return 'Wrong email or password (or confirm your email if you just signed up).';
+  }
+  if (
+    lower.includes('refresh token') ||
+    lower.includes('session expired') ||
+    lower.includes('jwt expired') ||
+    lower.includes('token has expired') ||
+    lower.includes('invalid_grant') ||
+    (lower.includes('jwt') && (lower.includes('expired') || lower.includes('malformed')))
+  ) {
     return 'session expired — sign in again';
   }
   if (

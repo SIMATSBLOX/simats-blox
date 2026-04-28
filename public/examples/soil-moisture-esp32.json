@@ -2,50 +2,62 @@
   "version": 1,
   "projectName": "Example: Soil moisture sensor",
   "boardId": "esp32",
-  "description": "Analog soil sensor AO → GPIO36 (ADC1). Calibrate dry/wet; prefer ADC1 when using Wi-Fi.",
+  "description": "Analog soil probe AO → GPIO35 (ADC1). I2C OLED/LCD on SDA21/SCL22 mirrors Serial lines. Calibrate dry/wet in firmware.",
   "blockly": {
     "blocks": {
       "languageVersion": 0,
       "blocks": [
         {
           "type": "esp32_when_starts",
-          "id": "pZ8bfS:paxl_g(msAN{`",
+          "id": "4{%e3Y7}Trx+M)9^iJ~d",
           "x": 20,
           "y": 20,
           "next": {
             "block": {
               "type": "comm_serial_begin",
-              "id": "7X`:`sCb0Af)D4mrBPkv",
+              "id": "c2ty8t)KiOBtZyI9IYQB",
               "fields": {
                 "BAUD": 115200
               },
               "next": {
                 "block": {
-                  "type": "hw_forever",
-                  "id": "tqMPDpA$S9~=Io$|zI*f",
-                  "inputs": {
-                    "DO": {
-                      "block": {
-                        "type": "comm_serial_println",
-                        "id": "wIP$K[,$f=nN1xG{4B]P",
-                        "inputs": {
-                          "VAL": {
-                            "block": {
-                              "type": "sensor_analog_mblock",
-                              "id": "fm,CXHa-0Vl7wG`YOM@o",
-                              "fields": {
-                                "ASTYPE": "SOIL",
-                                "APIN": 36
-                              }
-                            }
-                          }
-                        },
-                        "next": {
+                  "type": "mp_display_i2c_setup",
+                  "id": "o^u?ojmfcx{Qs*vBluZ~",
+                  "fields": {
+                    "W": 128,
+                    "H": 64,
+                    "SCL": 22,
+                    "SDA": 21
+                  },
+                  "next": {
+                    "block": {
+                      "type": "hw_forever",
+                      "id": "@9kl7n(1J2wYG`Fc!BS,",
+                      "inputs": {
+                        "DO": {
                           "block": {
-                            "type": "hw_wait",
-                            "id": "DKa[vrxV7HBEQhfK*nYG",
-                            "fields": {
-                              "MS": 1000
+                            "type": "comm_serial_println",
+                            "id": "0,cy`s#IT$7w2@bBl!Wu",
+                            "inputs": {
+                              "VAL": {
+                                "block": {
+                                  "type": "sensor_analog_mblock",
+                                  "id": "?00?|*^L$e0sKI^*7Fju",
+                                  "fields": {
+                                    "ASTYPE": "SOIL",
+                                    "APIN": 35
+                                  }
+                                }
+                              }
+                            },
+                            "next": {
+                              "block": {
+                                "type": "hw_wait",
+                                "id": "3LC$tPJ)F}mwVSNi^MQZ",
+                                "fields": {
+                                  "MS": 500
+                                }
+                              }
                             }
                           }
                         }

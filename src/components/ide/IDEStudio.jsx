@@ -421,7 +421,7 @@ export default function IDEStudio({
               style={{ height: mobileCatH }}
             >
               <ToolboxPanelTabs value={leftToolboxTab} onChange={setLeftToolboxTab} />
-              <div className="min-h-[44px] min-w-0 flex-1 overflow-x-auto overflow-y-hidden">
+              <div className="min-h-[52px] min-w-0 flex-1 overflow-x-auto overflow-y-hidden">
                 <CategoryIconRail layout="horizontal" />
               </div>
             </div>

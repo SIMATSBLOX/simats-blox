@@ -1,14 +1,11 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
 import Button from '../ui/Button.jsx';
-import { BOARD_LABEL, useIdeStore } from '../../store/ideStore.js';
-import { useAuthStore } from '../../store/authStore.js';
+import { BOARD_LABEL } from '../../store/ideStore.js';
 import { useCloudAuthStore } from '../../store/cloudAuthStore.js';
 import { isSupabaseConfigured } from '../../lib/supabaseClient.js';
-import { isDemoSupabaseOnly } from '../../lib/demoSupabaseOnly.js';
 import * as supabaseAuth from '../../lib/authService.js';
 import { toast } from '../../lib/toast.js';
-import { formatSupabaseUserMessage, formatUserSafeError } from '../../lib/projectIo.js';
+import { formatSupabaseUserMessage } from '../../lib/projectIo.js';
 import pkg from '../../../package.json';
 
 /**
@@ -53,15 +50,6 @@ function SecondaryDetails({ summary, children }) {
  * @param {{ open: boolean, onClose: () => void }} props
  */
 export default function SettingsModal({ open, onClose }) {
-  const setCloudProjectId = useIdeStore((s) => s.setCloudProjectId);
-  const persistTarget = useIdeStore((s) => s.persistTarget);
-
-  const login = useAuthStore((s) => s.login);
-  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
-  const signIn = useAuthStore((s) => s.signIn);
-  const signUp = useAuthStore((s) => s.signUp);
-  const signOut = useAuthStore((s) => s.signOut);
-
   const sbUser = useCloudAuthStore((s) => s.user);
   const sbLoading = useCloudAuthStore((s) => s.authLoading);
   const sbStoreError = useCloudAuthStore((s) => s.authError);
@@ -72,23 +60,7 @@ export default function SettingsModal({ open, onClose }) {
   const [sbConfirm, setSbConfirm] = useState('');
   const [sbFormError, setSbFormError] = useState('');
 
-  const [authMode, setAuthMode] = useState(/** @type {'in' | 'up'} */ ('in'));
-  const [formLogin, setFormLogin] = useState('');
-  const [formPassword, setFormPassword] = useState('');
-  const [formConfirm, setFormConfirm] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [formError, setFormError] = useState('');
-
-  const demoOnly = isDemoSupabaseOnly();
-
   if (!open) return null;
-
-  const handleSignOut = () => {
-    signOut();
-    setCloudProjectId(null);
-    toast('success', 'Signed out of local API.');
-    onClose();
-  };
 
   const submitSupabaseAuth = async () => {
     setSbFormError('');
@@ -142,52 +114,6 @@ export default function SettingsModal({ open, onClose }) {
     }
   };
 
-  const submitAuth = async () => {
-    setFormError('');
-    const l = formLogin.trim();
-    const p = formPassword;
-    if (!l || !p) {
-      setFormError('Enter username or email and password.');
-      return;
-    }
-    if (authMode === 'up') {
-      if (p.length < 8) {
-        setFormError('Password must be at least 8 characters.');
-        return;
-      }
-      if (p !== formConfirm) {
-        setFormError('Passwords do not match.');
-        return;
-      }
-    }
-    setBusy(true);
-    try {
-      if (authMode === 'up') await signUp(l, p);
-      else await signIn(l, p);
-      setFormPassword('');
-      setFormConfirm('');
-      setFormError('');
-      toast(
-        'success',
-        authMode === 'up' ? 'Account created. Signed in to local API.' : 'Signed in to local API.',
-      );
-      onClose();
-    } catch (e) {
-      const friendly = formatUserSafeError(e);
-      setFormError(friendly);
-      toast('error', friendly);
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const activeSaveLabel =
-    persistTarget === 'supabase'
-      ? 'Cloud account'
-      : persistTarget === 'express_api'
-        ? 'Local dev server'
-        : 'This browser only';
-
   const inputCls =
     'w-full rounded border border-studio-border bg-[#1b1f24] px-2 py-1.5 text-xs text-slate-100 focus:border-studio-accent/60 focus:outline-none focus:ring-1 focus:ring-studio-accent/30';
 
@@ -210,9 +136,7 @@ export default function SettingsModal({ open, onClose }) {
           <h2 id="settings-title" className="text-base font-semibold tracking-tight text-slate-100">
             Settings
           </h2>
-          <p className="mt-0.5 text-[10px] text-studio-muted">
-            Cloud account, where saves go, and IDE defaults.
-          </p>
+          <p className="mt-0.5 text-[10px] text-studio-muted">Cloud account and IDE defaults.</p>
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
@@ -220,23 +144,6 @@ export default function SettingsModal({ open, onClose }) {
             {/* Cloud account */}
             <section className="space-y-2">
               <SectionTitle>Cloud account</SectionTitle>
-              <SecondaryDetails summary="More info">
-                <p>
-                  {demoOnly ? (
-                    <>
-                      Use the email sign-in below for cloud projects and{' '}
-                      <span className="text-slate-400">Devices</span>. This build does not show a separate local-server
-                      account.
-                    </>
-                  ) : (
-                    <>
-                      Your cloud account syncs projects across browsers. You can also work{' '}
-                      <span className="text-slate-400">in this browser only</span> without signing in. Need a local dev
-                      database? Expand <span className="text-slate-400">Developer · local server</span> below.
-                    </>
-                  )}
-                </p>
-              </SecondaryDetails>
 
               <div className="space-y-2">
                 <Panel>
@@ -352,190 +259,15 @@ export default function SettingsModal({ open, onClose }) {
                       >
                         {sbLoading ? 'Please wait…' : sbMode === 'up' ? 'Create account' : 'Sign in'}
                       </Button>
+                      <p className="text-[10px] leading-relaxed text-studio-muted">
+                        Passwords are checked by <span className="text-slate-400">Supabase Auth</span> and stored there as
+                        a secure hash (Supabase&apos;s servers), not in this app&apos;s SQLite file or in{' '}
+                        <span className="font-mono">localStorage</span>.
+                      </p>
                     </div>
                   )}
                 </Panel>
               </div>
-
-              {!demoOnly ? (
-                <SecondaryDetails summary="Developer · local server (optional)">
-                  <p className="text-[10px] text-studio-muted">
-                    For development: SQLite on your machine when the API is running. Not required for normal cloud use.
-                  </p>
-                  <Panel className="mt-2">
-                    {isAuthenticated ? (
-                      <div>
-                        <p className="text-[11px] font-medium text-sky-200/90">Signed in (local server)</p>
-                        <p className="mt-1 font-mono text-[11px] text-slate-200">{login}</p>
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          <Link
-                            to="/devices"
-                            onClick={() => onClose()}
-                            className="inline-flex items-center justify-center rounded px-2.5 py-1 text-xs font-medium text-white bg-studio-accent border border-transparent hover:bg-studio-accentHover"
-                          >
-                            Open Devices & sensors
-                          </Link>
-                          <Button variant="default" className="!text-xs" onClick={handleSignOut}>
-                            Sign out of local server
-                          </Button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="space-y-2">
-                        <div className="flex gap-1.5">
-                          <button
-                            type="button"
-                            className={`rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors ${
-                              authMode === 'in'
-                                ? 'bg-studio-accent/25 text-slate-100'
-                                : 'text-studio-muted hover:bg-white/5'
-                            }`}
-                            onClick={() => {
-                              setAuthMode('in');
-                              setFormError('');
-                            }}
-                          >
-                            Sign in
-                          </button>
-                          <button
-                            type="button"
-                            className={`rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors ${
-                              authMode === 'up'
-                                ? 'bg-studio-accent/25 text-slate-100'
-                                : 'text-studio-muted hover:bg-white/5'
-                            }`}
-                            onClick={() => {
-                              setAuthMode('up');
-                              setFormError('');
-                            }}
-                          >
-                            Sign up
-                          </button>
-                        </div>
-                        <label className="block text-[10px] text-studio-muted" htmlFor="set-login">
-                          Username or email
-                        </label>
-                        <input
-                          id="set-login"
-                          autoComplete="username"
-                          value={formLogin}
-                          onChange={(e) => setFormLogin(e.target.value)}
-                          className={inputCls}
-                        />
-                        <label className="block text-[10px] text-studio-muted" htmlFor="set-password">
-                          Password
-                        </label>
-                        <input
-                          id="set-password"
-                          type="password"
-                          autoComplete={authMode === 'up' ? 'new-password' : 'current-password'}
-                          value={formPassword}
-                          onChange={(e) => setFormPassword(e.target.value)}
-                          className={inputCls}
-                        />
-                        {authMode === 'up' ? (
-                          <>
-                            <label className="block text-[10px] text-studio-muted" htmlFor="set-confirm">
-                              Confirm password
-                            </label>
-                            <input
-                              id="set-confirm"
-                              type="password"
-                              autoComplete="new-password"
-                              value={formConfirm}
-                              onChange={(e) => setFormConfirm(e.target.value)}
-                              className={inputCls}
-                            />
-                          </>
-                        ) : null}
-                        {formError ? <p className="text-[11px] text-red-300/90">{formError}</p> : null}
-                        <Button variant="primary" className="!text-xs" disabled={busy} onClick={() => void submitAuth()}>
-                          {busy ? 'Please wait…' : authMode === 'up' ? 'Create account' : 'Sign in'}
-                        </Button>
-                        <p className="text-[10px] leading-relaxed text-studio-muted">
-                          Server must be running. Tokens stay in this browser; passwords are hashed on the server.
-                        </p>
-                      </div>
-                    )}
-                  </Panel>
-                </SecondaryDetails>
-              ) : null}
-            </section>
-
-            {/* Save & open */}
-            <section className="space-y-2">
-              <SectionTitle>Save &amp; open</SectionTitle>
-              <Panel className="py-2">
-                <p className="text-[10px] font-medium uppercase tracking-wide text-slate-500">
-                  Where Save / Open goes right now
-                </p>
-                <p className="mt-1 inline-flex items-center rounded-md bg-[#1a1d22] px-2 py-1 font-mono text-[11px] text-emerald-200/90 ring-1 ring-white/[0.06]">
-                  {activeSaveLabel}
-                </p>
-                <div className="mt-2">
-                  <SecondaryDetails summary="How saving works (priority, browser storage, File menu)">
-                    <p>
-                      <span className="font-medium text-slate-400">Order of use:</span>{' '}
-                      {demoOnly ? (
-                        <>
-                          Cloud when signed in; otherwise this browser only. (Local dev server Save/Open is off in this
-                          build.)
-                        </>
-                      ) : (
-                        <>
-                          Cloud when signed in; if you use a local dev server and sign in there, that can be next; otherwise
-                          this browser only.
-                        </>
-                      )}
-                    </p>
-                    {isSupabaseConfigured() && sbUser ? (
-                      <p>
-                        Signed in to cloud: toolbar <span className="text-slate-400">Save / Open</span> uses cloud projects
-                        when cloud has priority.
-                      </p>
-                    ) : null}
-                    {!demoOnly && isAuthenticated ? (
-                      <p>
-                        Local dev server: projects live in SQLite when the API is running (
-                        <span className="font-mono">npm run dev:full</span>). Use <span className="text-slate-400">Devices</span>{' '}
-                        in the top bar for sensors.
-                      </p>
-                    ) : null}
-                    <ul className="list-inside list-disc space-y-1">
-                      <li>
-                        <span className="text-slate-400">Cloud account</span> — same projects on any browser when you sign
-                        in.
-                      </li>
-                      {!demoOnly ? (
-                        <li>
-                          <span className="text-slate-400">Local dev server</span> — SQLite on your machine; needs{' '}
-                          <span className="font-mono">npm run server</span> / <span className="font-mono">dev:full</span>.
-                        </li>
-                      ) : null}
-                      <li>
-                        <span className="text-slate-400">This browser</span> —{' '}
-                        <span className="font-mono">localStorage</span>; File →{' '}
-                        <span className="text-slate-400">Save to this browser only</span> forces it.
-                      </li>
-                    </ul>
-                    <p>
-                      <span className="text-slate-400">File → Open…</span> lists cloud, optional local server, and this
-                      browser in separate sections. <span className="text-slate-400">Export Project</span> always downloads
-                      a file.
-                    </p>
-                    <p>
-                      <span className="text-slate-400">Toolbar title &amp; notes</span> are stored with Save / Save As /
-                      Export Project. <span className="text-slate-400">Clear canvas</span> keeps them;{' '}
-                      <span className="text-slate-400">New project</span> resets title and notes.
-                    </p>
-                    <p>
-                      <span className="text-slate-400">Unsaved session backup</span> — this browser may offer to restore your
-                      last in-progress canvas after a refresh (separate from named saves).{' '}
-                      <span className="text-slate-400">New project</span> clears that backup.
-                    </p>
-                  </SecondaryDetails>
-                </div>
-              </Panel>
             </section>
 
             {/* IDE preferences */}

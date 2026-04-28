@@ -1,59 +1,59 @@
 {
   "version": 1,
-  "projectName": "Example: Blink LED",
+  "projectName": "Example: Relay control",
   "boardId": "esp32",
-  "description": "GPIO5 OUTPUT — wire an LED + resistor to GND. 500 ms on/off. Change pin if your kit differs.",
+  "description": "Relay IN on GPIO23 (OUTPUT). Energize 1 s / de-energize 1 s. Match active-HIGH vs active-LOW modules in lessons.",
   "blockly": {
     "blocks": {
       "languageVersion": 0,
       "blocks": [
         {
           "type": "esp32_when_starts",
-          "id": "gwo;7fb~g,yZd*g7-0bB",
+          "id": "=x.Ng3+OAiY0=,K!f|PL",
           "x": 20,
           "y": 20,
           "next": {
             "block": {
               "type": "board_pin_mode",
-              "id": "vCO@-)EzG1q+Bs}{)!TQ",
+              "id": "XEIgP3ph~+43W0XN[_1c",
               "fields": {
-                "DPIN": 5,
+                "DPIN": 23,
                 "MODE": "OUTPUT"
               },
               "next": {
                 "block": {
                   "type": "hw_forever",
-                  "id": "[c#%,m=k:PqZ@ZZ]c/*g",
+                  "id": "Z|4J87!#?K8D-S1hY8Ot",
                   "inputs": {
                     "DO": {
                       "block": {
-                        "type": "board_digital_write",
-                        "id": "eKvBvY9xl#ux,3zyswKm",
+                        "type": "output_relay",
+                        "id": "{.lyLt;NS]B]AWxS`SZN",
                         "fields": {
-                          "DPIN": 5,
-                          "LEVEL": "HIGH"
+                          "DPIN": 23,
+                          "ON": "HIGH"
                         },
                         "next": {
                           "block": {
                             "type": "hw_wait",
-                            "id": "fj_t^nkMmlahUsSC(Eu-",
+                            "id": "faNGMx$[FSS~dy|.vl,K",
                             "fields": {
-                              "MS": 500
+                              "MS": 1000
                             },
                             "next": {
                               "block": {
-                                "type": "board_digital_write",
-                                "id": "7+J%H*va[+vn.kj]-F$5",
+                                "type": "output_relay",
+                                "id": "%b6Zq)uk%MuH{N.Tt0(Y",
                                 "fields": {
-                                  "DPIN": 5,
-                                  "LEVEL": "LOW"
+                                  "DPIN": 23,
+                                  "ON": "LOW"
                                 },
                                 "next": {
                                   "block": {
                                     "type": "hw_wait",
-                                    "id": "JHl^9W~)kLy$oJ?UJec7",
+                                    "id": "xMcHRqDD?.^IV]{H$rFx",
                                     "fields": {
-                                      "MS": 500
+                                      "MS": 1000
                                     }
                                   }
                                 }

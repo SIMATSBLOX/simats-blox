@@ -37,7 +37,7 @@ function blockList(types) {
 function ensureVisibleBlocks(preferred, minVisible = 2, extraFallbacks = [], boardId = 'esp32') {
   const out = blockList(preferred);
   if (out.length >= minVisible) return out;
-  const startHat = boardId === 'esp32' ? 'esp32_when_starts' : 'board_when_starts';
+  const startHat = 'esp32_when_starts';
   const globalFallbacks = [
     ...extraFallbacks,
     'math_number',
@@ -76,7 +76,18 @@ const START_HAT = /** @type {const} */ ('esp32_when_starts');
 
 /** @param {BoardId} boardId */
 function esp32MicroPythonExtras() {
-  return ['mp_display_i2c_setup', 'mp_display_text', 'mp_pwm_write', 'mp_touch_read'];
+  return [
+    'mp_max30102_setup',
+    'mp_max30102_print_raw',
+    'mp_i2c_scan',
+    'mp_neopixel_setup',
+    'mp_neopixel_fill',
+    'mp_display_i2c_setup',
+    'mp_display_text',
+    'mp_pwm_write',
+    'mp_touch_read',
+    'mp_touch_active_value',
+  ];
 }
 
 /**
@@ -117,7 +128,7 @@ function flyoutForCategory(categoryId, boardId) {
           title: 'Start',
           types: [START_HAT],
           minBlocks: 1,
-          fallbacks: ['board_when_starts'],
+          fallbacks: ['esp32_when_starts'],
         },
         {
           title: 'Pins · digital & PWM',
@@ -279,7 +290,13 @@ function flyoutForCategory(categoryId, boardId) {
       [
         {
           title: 'Distance & digital',
-          types: ['sensor_ultrasonic_mblock', 'sensor_ultrasonic_cm', 'sensor_digital_mblock'],
+          types: [
+            'sensor_ultrasonic_mblock',
+            'sensor_ultrasonic_cm',
+            'sensor_digital_mblock',
+            'touch_module_read',
+            'mp_touch_read',
+          ],
           minBlocks: 2,
           fallbacks: ['board_digital_read'],
         },

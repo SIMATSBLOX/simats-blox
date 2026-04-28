@@ -1,28 +1,28 @@
 {
   "version": 1,
-  "projectName": "Example: IR obstacle avoidance sensor",
+  "projectName": "Example: MAX30102 pulse / SpO2",
   "boardId": "esp32",
-  "description": "IR module GPIO27 (INPUT_PULLUP). Optional I2C OLED/LCD mirrors Serial. Many modules are active-low.",
+  "description": "MAX30102 I2C: SDA 21, SCL 22 (same bus as optional OLED/LCD mirror). Polling mode (INT not required).",
   "blockly": {
     "blocks": {
       "languageVersion": 0,
       "blocks": [
         {
           "type": "esp32_when_starts",
-          "id": "F$p{h,1tzRt#BPuZ-myG",
+          "id": ";-[#k8[^es~0%0aceFRM",
           "x": 20,
           "y": 20,
           "next": {
             "block": {
               "type": "comm_serial_begin",
-              "id": "NErvHEkV):m4E9,P}TV0",
+              "id": "zHH|-ePJFIR$TGa_#ll1",
               "fields": {
                 "BAUD": 115200
               },
               "next": {
                 "block": {
                   "type": "mp_display_i2c_setup",
-                  "id": "*{l[6FRh]FdOC6{devMs",
+                  "id": "(OE_w6q1$$a,Eu6MpHmd",
                   "fields": {
                     "W": 128,
                     "H": 64,
@@ -31,37 +31,25 @@
                   },
                   "next": {
                     "block": {
-                      "type": "board_pin_mode",
-                      "id": ",r5yoJxqRE(dL:;`W10E",
+                      "type": "mp_max30102_setup",
+                      "id": "U5FSokj24KQ_x|I9.BT^",
                       "fields": {
-                        "DPIN": 27,
-                        "MODE": "INPUT_PULLUP"
+                        "SDA": 21,
+                        "SCL": 22
                       },
                       "next": {
                         "block": {
                           "type": "hw_forever",
-                          "id": "MKUD_$+qmcK(9nI8Ym6e",
+                          "id": "0hTo-OkY{C0L!aSxIy8?",
                           "inputs": {
                             "DO": {
                               "block": {
-                                "type": "comm_serial_println",
-                                "id": "e#[H8)D`Cn@C[]c3qSmS",
-                                "inputs": {
-                                  "VAL": {
-                                    "block": {
-                                      "type": "sensor_digital_mblock",
-                                      "id": "IWnM(9D2S|VF`o)}G1wt",
-                                      "fields": {
-                                        "DSTYPE": "IR",
-                                        "DPIN": 27
-                                      }
-                                    }
-                                  }
-                                },
+                                "type": "mp_max30102_print_raw",
+                                "id": "Gg;r2fKfUylpZHJJD_;o",
                                 "next": {
                                   "block": {
                                     "type": "hw_wait",
-                                    "id": "m93f5_z!;mlBM{$(D3j|",
+                                    "id": "Ag]xPQEeFj+)a)]02qKG",
                                     "fields": {
                                       "MS": 500
                                     }

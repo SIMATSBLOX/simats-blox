@@ -6,6 +6,8 @@ export default defineConfig({
   server: {
     port: 5173,
     strictPort: false, // if 5173 is busy, Vite tries the next free port — use the URL it prints
+    /** Listen on all interfaces so phones / other laptops on the same Wi‑Fi can open http://<your-LAN-IP>:5173 */
+    host: true,
     proxy: {
       '/api': {
         target: 'http://127.0.0.1:3847',

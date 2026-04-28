@@ -2,65 +2,74 @@
   "version": 1,
   "projectName": "Example: Servo sweep",
   "boardId": "esp32",
-  "description": "Angles 0° / 90° / 180° on GPIO18. MicroPython preview emits teaching PWM notes — tune pulse width on hardware.",
+  "description": "Servo signal on GPIO18 (PWM). Cycles 0° / 90° / 180° with 800 ms pauses. Use a suitable power supply.",
   "blockly": {
     "blocks": {
       "languageVersion": 0,
       "blocks": [
         {
           "type": "esp32_when_starts",
-          "id": "#mQR9#g-=VRF+hwoMn+:",
+          "id": ";v]Xo$bw+R:{3r|eu~Y?",
           "x": 20,
           "y": 20,
           "next": {
             "block": {
-              "type": "hw_forever",
-              "id": "op-fyn@lL?vjFFm_O#0H",
-              "inputs": {
-                "DO": {
-                  "block": {
-                    "type": "output_servo_write",
-                    "id": "bkt.-Mpk+465N!^97.Qw",
-                    "fields": {
-                      "DPIN": 18,
-                      "ANGLE": 0
-                    },
-                    "next": {
+              "type": "comm_serial_begin",
+              "id": "X34iX{b6?3{F$jrvPE9Y",
+              "fields": {
+                "BAUD": 115200
+              },
+              "next": {
+                "block": {
+                  "type": "hw_forever",
+                  "id": "Ns)a0q}SJWF80g6c]^tL",
+                  "inputs": {
+                    "DO": {
                       "block": {
-                        "type": "hw_wait",
-                        "id": "Mwu_`VAHrkq:h1*]Qn;7",
+                        "type": "output_servo_write",
+                        "id": "%akg8t2Ctk+hK1E!N*V=",
                         "fields": {
-                          "MS": 800
+                          "DPIN": 18,
+                          "ANGLE": 0
                         },
                         "next": {
                           "block": {
-                            "type": "output_servo_write",
-                            "id": "[j:|^Jr%OC#j!OY{U?z^",
+                            "type": "hw_wait",
+                            "id": "V1ix?Ey:5xc+Q:5HC`R2",
                             "fields": {
-                              "DPIN": 18,
-                              "ANGLE": 90
+                              "MS": 800
                             },
                             "next": {
                               "block": {
-                                "type": "hw_wait",
-                                "id": "vLgN0z|jh^KEE~46Ger2",
+                                "type": "output_servo_write",
+                                "id": "`Cw)D^%HR$b4HBmxC8zV",
                                 "fields": {
-                                  "MS": 800
+                                  "DPIN": 18,
+                                  "ANGLE": 90
                                 },
                                 "next": {
                                   "block": {
-                                    "type": "output_servo_write",
-                                    "id": "dD|TM..fc[BE#{K~lE9?",
+                                    "type": "hw_wait",
+                                    "id": "V{TAnqQB)A|W)2/l|oei",
                                     "fields": {
-                                      "DPIN": 18,
-                                      "ANGLE": 180
+                                      "MS": 800
                                     },
                                     "next": {
                                       "block": {
-                                        "type": "hw_wait",
-                                        "id": "fJjS:;bhUNv+!.MJOb~o",
+                                        "type": "output_servo_write",
+                                        "id": "-1t$7?sBty9Xu!FEnmdG",
                                         "fields": {
-                                          "MS": 800
+                                          "DPIN": 18,
+                                          "ANGLE": 180
+                                        },
+                                        "next": {
+                                          "block": {
+                                            "type": "hw_wait",
+                                            "id": "r60#MCtAEGlw.kUHBRk]",
+                                            "fields": {
+                                              "MS": 800
+                                            }
+                                          }
                                         }
                                       }
                                     }

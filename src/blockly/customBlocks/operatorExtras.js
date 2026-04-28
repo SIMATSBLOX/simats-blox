@@ -15,6 +15,6 @@ export const operatorExtrasDefinitions = [
     inputsInline: true,
     output: 'Number',
     style: 'math_blocks',
-    tooltip: 'Arduino map(): scales a value from one numeric range to another.',
+    tooltip: 'map(): scales a value from one numeric range to another.',
   },
 ];

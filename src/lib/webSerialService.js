@@ -438,6 +438,33 @@ export async function writeSerialUtf8InChunks(text, maxChunkBytes = 2048) {
   }
 }
 
+/** @param {number} ms */
+function serialDelay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Try an ESP32-style auto-reset pulse via control lines (RTS/DTR).
+ * Some USB-UART bridges ignore this; returns false in that case.
+ * @returns {Promise<boolean>}
+ */
+export async function pulseEsp32AutoResetToRun() {
+  if (!activePort || typeof activePort.setSignals !== 'function') return false;
+  try {
+    // Typical ESP32 sequence: pull EN low briefly, then release to boot normal app.
+    await activePort.setSignals({ dataTerminalReady: false, requestToSend: true });
+    await serialDelay(110);
+    await activePort.setSignals({ dataTerminalReady: true, requestToSend: false });
+    await serialDelay(240);
+    return true;
+  } catch (e) {
+    if (import.meta.env.DEV) {
+      console.warn('[webSerial] auto-reset pulse failed', e);
+    }
+    return false;
+  }
+}
+
 /**
  * Close the active port and stop the read loop (user-initiated or cleanup).
  */

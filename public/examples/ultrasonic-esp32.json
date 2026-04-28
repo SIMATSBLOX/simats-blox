@@ -2,50 +2,62 @@
   "version": 1,
   "projectName": "Example: HC-SR04 ultrasonic distance",
   "boardId": "esp32",
-  "description": "HC-SR04: TRIG GPIO5, ECHO GPIO18. Use 3.3 V–safe wiring or a level shifter if the module is 5 V.",
+  "description": "TRIG GPIO4, ECHO GPIO13. Optional I2C OLED/LCD mirrors distance lines. Use 3.3 V–safe wiring or level shifting if the module is 5 V.",
   "blockly": {
     "blocks": {
       "languageVersion": 0,
       "blocks": [
         {
           "type": "esp32_when_starts",
-          "id": ",[q(sY+`hSD,_C{x~3PZ",
+          "id": "yhQ)Pp6cD*?|D~)s!F]i",
           "x": 20,
           "y": 20,
           "next": {
             "block": {
               "type": "comm_serial_begin",
-              "id": "J,*U^F0IH%^y!HgAC}i5",
+              "id": "wb;Q.Yt2ZT5e}HsSfh|3",
               "fields": {
                 "BAUD": 115200
               },
               "next": {
                 "block": {
-                  "type": "hw_forever",
-                  "id": "~XwM),4[As,JsFpk8HxI",
-                  "inputs": {
-                    "DO": {
-                      "block": {
-                        "type": "comm_serial_println",
-                        "id": "lN;|Fi{Fyung;O%)YE79",
-                        "inputs": {
-                          "VAL": {
-                            "block": {
-                              "type": "sensor_ultrasonic_mblock",
-                              "id": "jJChQByY(YIh;:8Yr4(a",
-                              "fields": {
-                                "TRIG": 5,
-                                "ECHO": 18
-                              }
-                            }
-                          }
-                        },
-                        "next": {
+                  "type": "mp_display_i2c_setup",
+                  "id": "}gK%0KF@dB3wTfN:8#;e",
+                  "fields": {
+                    "W": 128,
+                    "H": 64,
+                    "SCL": 22,
+                    "SDA": 21
+                  },
+                  "next": {
+                    "block": {
+                      "type": "hw_forever",
+                      "id": "!%O~@HLgpxuYK5W$2rjU",
+                      "inputs": {
+                        "DO": {
                           "block": {
-                            "type": "hw_wait",
-                            "id": "[(_dTh-J=q.{L;0+kYWS",
-                            "fields": {
-                              "MS": 500
+                            "type": "comm_serial_println",
+                            "id": "h]nWq:FJUFk7N0Px8E=^",
+                            "inputs": {
+                              "VAL": {
+                                "block": {
+                                  "type": "sensor_ultrasonic_mblock",
+                                  "id": "COk*?*5nFPNrfbBz;o#l",
+                                  "fields": {
+                                    "TRIG": 4,
+                                    "ECHO": 13
+                                  }
+                                }
+                              }
+                            },
+                            "next": {
+                              "block": {
+                                "type": "hw_wait",
+                                "id": "l/l@_Ve)dAuHMgdmz1O+",
+                                "fields": {
+                                  "MS": 500
+                                }
+                              }
                             }
                           }
                         }

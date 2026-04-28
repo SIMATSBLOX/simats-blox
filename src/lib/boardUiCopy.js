@@ -2,10 +2,6 @@
  * MicroPython / ESP32-only UI strings for the IDE toolbar, code preview, and console.
  */
 
-export function codePreviewHeaderHint() {
-  return 'Read-only MicroPython — Upload writes main.py over USB when connected, or Export Code (.py).';
-}
-
 export function codePreviewPlaceholderComment() {
   return '// Stack blocks under “when ESP32 starts” (setup) and repeat-forever (loop). Live MicroPython preview.';
 }
@@ -19,7 +15,7 @@ export function serialConnectButtonTitle(opts) {
   if (connectState === 'connected') return 'Disconnect USB serial';
   if (connectState === 'connecting') return 'Opening serial port…';
   if (!webSerialOk) return webSerialMessage;
-  return `Connect USB serial at ${serialBaudRate} baud — MicroPython REPL is often 115200; set baud below, then Connect.`;
+  return `Connect USB serial at ${serialBaudRate} baud (ESP32 MicroPython — fixed in this IDE).`;
 }
 
 /**
@@ -27,7 +23,7 @@ export function serialConnectButtonTitle(opts) {
  * @param {number} baud
  */
 export function serialConnectedLogLine(baud) {
-  return `Serial connected at ${baud} baud. ESP32 MicroPython: USB REPL is usually 115200 — match baud if output is garbled, then use Serial Monitor.`;
+  return `Serial connected at ${baud} baud. ESP32 MicroPython USB uses this rate in SIMATS BLOX.`;
 }
 
 /**
@@ -60,20 +56,8 @@ export function exportToolbarMenuTitle() {
   return 'Export project (.json), MicroPython (.py), or workspace XML';
 }
 
-/**
- * Serial Monitor strip when not connected (baud + board defaults).
- * @param {number} serialBaudRate
- */
-export function consoleSerialDisconnectedCopy(serialBaudRate) {
-  return `Not connected. Toolbar Connect opens the port at ${serialBaudRate} baud — ESP32 MicroPython USB serial is usually 115200 (set below before connecting).`;
-}
-
 /** @returns {string} */
 export function examplesMenuBoardBlurb() {
   return 'Starter MicroPython examples for ESP32.';
 }
 
-/** @returns {string} */
-export function openSerialMonitorTitle() {
-  return 'Open Serial Monitor — stream MicroPython REPL / print output (baud must match Connect)';
-}

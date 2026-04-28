@@ -74,7 +74,6 @@ export default function RegisterDeviceForm({ onRegistered }) {
               className="mt-0.5 w-full rounded border border-studio-border bg-[#14171b] px-2 py-1.5 text-xs text-slate-200"
               required
               autoComplete="off"
-              placeholder="e.g. lab_table_3"
             />
           </label>
           <label className="sm:col-span-2 block text-[11px] text-studio-muted">
@@ -98,7 +97,6 @@ export default function RegisterDeviceForm({ onRegistered }) {
               value={location}
               onChange={(e) => setLocation(e.target.value)}
               className="mt-0.5 w-full rounded border border-studio-border bg-[#14171b] px-2 py-1.5 text-xs text-slate-200"
-              placeholder="e.g. Windowsill"
             />
           </label>
           <div className="sm:col-span-2 pt-1">

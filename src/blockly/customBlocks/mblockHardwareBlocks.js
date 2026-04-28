@@ -299,7 +299,7 @@ export const mblockHardwareBlockDefinitions = [
     inputsInline: true,
     output: 'Number',
     style: 'esp32_blocks',
-    tooltip: 'ESP32 capacitive touch (T0–T9).',
+    tooltip: 'ESP32-WROOM-32: capacitive touch T0–T9 on GPIO 0,2,4,12–15,27,32,33. ESP32-S3 uses GPIO 1–14 only.',
   },
   {
     type: 'esp32_hall_value',
@@ -412,7 +412,7 @@ export const mblockHardwareBlockDefinitions = [
     inputsInline: true,
     output: 'Number',
     style: 'sensor_cyan_blocks',
-    tooltip: 'Needs DHT library in Arduino; MicroPython uses native dht module.',
+    tooltip: 'MicroPython uses the native dht module on ESP32.',
   },
   {
     type: 'sensor_bmp280_mblock',
@@ -422,7 +422,7 @@ export const mblockHardwareBlockDefinitions = [
     output: 'Number',
     style: 'sensor_cyan_blocks',
     tooltip:
-      'BMP280 over I²C (default 0x76). Preview uses a numeric placeholder — add Adafruit BMP280 (Arduino) or a bmp280 module (MicroPython) for real readings.',
+      'BMP280 over I²C (default 0x76). Preview uses a numeric placeholder — add a bmp280 MicroPython driver for real readings.',
   },
   {
     type: 'sensor_analog_mblock',

@@ -47,6 +47,9 @@ export const SENSOR_UI_BY_TYPE = {
   ir_sensor: {
     fields: [{ key: 'irDetected', label: 'IR detected', kind: 'boolean' }],
   },
+  servo: {
+    fields: [{ key: 'angle', label: 'Servo angle', unit: 'deg', kind: 'number' }],
+  },
 };
 
 /**

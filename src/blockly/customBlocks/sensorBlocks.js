@@ -9,7 +9,7 @@ export const sensorBlockDefinitions = [
     inputsInline: true,
     output: 'Number',
     style: 'sensor_cyan_blocks',
-    tooltip: 'Uses pulseIn on echo pin; returns cm or -1 on timeout (Arduino preview).',
+    tooltip: 'Ultrasonic distance; returns cm or -1 on timeout (MicroPython preview).',
   },
   {
     type: 'sensor_dht_temp',
@@ -47,7 +47,7 @@ export const sensorBlockDefinitions = [
     inputsInline: true,
     output: 'Number',
     style: 'sensor_cyan_blocks',
-    tooltip: 'Same DHT wiring as temperature; needs DHT library (Arduino) or dht module (MicroPython).',
+    tooltip: 'Same DHT wiring as temperature; MicroPython uses the built-in dht module.',
   },
   {
     type: 'sensor_ldr',

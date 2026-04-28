@@ -1,28 +1,28 @@
 {
   "version": 1,
-  "projectName": "Example: Serial / print (basic)",
+  "projectName": "Example: ESP32 touch sensor",
   "boardId": "esp32",
-  "description": "USB REPL print loop — one line per second. Optional I2C OLED/LCD mirrors each line.",
+  "description": "ESP32-WROOM-32 — GPIO14 touch pad. Optional I2C OLED/LCD mirrors Serial (`Touch: <raw>`; TouchPad.read(); calibrate in lessons).",
   "blockly": {
     "blocks": {
       "languageVersion": 0,
       "blocks": [
         {
           "type": "esp32_when_starts",
-          "id": "HM#H!^H5@YnO3=m1@e;M",
+          "id": "}5yD9h;5.~-(*@::oqrA",
           "x": 20,
           "y": 20,
           "next": {
             "block": {
               "type": "comm_serial_begin",
-              "id": "N%)Lg*aG+dAm8#Tn9L!(",
+              "id": "N+aV9^|7kZ2wjl*_3`zJ",
               "fields": {
                 "BAUD": 115200
               },
               "next": {
                 "block": {
                   "type": "mp_display_i2c_setup",
-                  "id": "=yUz5FiS=0Zi)L/*3X!:",
+                  "id": "W^;h#)@JQbA[Ecu1XIi7",
                   "fields": {
                     "W": 128,
                     "H": 64,
@@ -32,19 +32,19 @@
                   "next": {
                     "block": {
                       "type": "hw_forever",
-                      "id": "/c|0lNBW)~QA}d1atnxQ",
+                      "id": "%jFVUO5e-@|%1:I6Gta:",
                       "inputs": {
                         "DO": {
                           "block": {
                             "type": "comm_serial_println",
-                            "id": "yzqMDD~PfD%Cc$POJ7[Y",
+                            "id": "VVTaSgR]!`C9[,C2#9yZ",
                             "inputs": {
                               "VAL": {
                                 "block": {
-                                  "type": "text",
-                                  "id": "e3]9krO]x[(ewtDgvTTv",
+                                  "type": "mp_touch_read",
+                                  "id": "jWz0eIuLVY=iYeX}#s{w",
                                   "fields": {
-                                    "TEXT": "Hello from ESP32"
+                                    "DPIN": 14
                                   }
                                 }
                               }
@@ -52,9 +52,9 @@
                             "next": {
                               "block": {
                                 "type": "hw_wait",
-                                "id": "@(3uQ.?dh8)ld_6X25`(",
+                                "id": "/yx9T09Q;L(/4NPO:#gZ",
                                 "fields": {
-                                  "MS": 1000
+                                  "MS": 500
                                 }
                               }
                             }
