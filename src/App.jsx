@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { BrowserRouter, Navigate, Route, Routes, useParams } from 'react-router-dom';
+import { BrowserRouter, HashRouter, Navigate, Route, Routes, useParams } from 'react-router-dom';
 import IDEPage from './pages/IDEPage.jsx';
 import DashboardPage from './pages/DashboardPage.jsx';
 import DevicePage from './pages/DevicePage.jsx';
@@ -17,6 +17,8 @@ function LegacyDashboardDeviceRedirect() {
 }
 
 export default function App() {
+  const Router = import.meta.env.PROD ? HashRouter : BrowserRouter;
+
   useEffect(() => {
     const unsubSupabase = initSupabaseAuth();
     const unsubExpress = useAuthStore.subscribe(() => refreshPersistTarget());
@@ -28,7 +30,7 @@ export default function App() {
   }, []);
 
   return (
-    <BrowserRouter>
+    <Router basename={import.meta.env.BASE_URL}>
       <Routes>
         <Route path="/" element={<IDEPage />} />
         <Route
@@ -52,6 +54,6 @@ export default function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       <ToastStack />
-    </BrowserRouter>
+    </Router>
   );
 }
