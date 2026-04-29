@@ -4,6 +4,31 @@
 import crypto from 'node:crypto';
 import { getDb } from './db.js';
 
+/**
+ * MySQL `JSON` columns can come back from `mysql2` either as a string or as an already-parsed object.
+ * Keep history endpoints resilient and avoid 500s from `JSON.parse` on non-strings.
+ * @param {unknown} v
+ * @returns {Record<string, unknown>}
+ */
+function safeParseJsonColumn(v) {
+  if (v == null) return {};
+  if (typeof v === 'object') return v;
+  if (typeof v === 'string') {
+    try {
+      const parsed = JSON.parse(v);
+      return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch {
+      return {};
+    }
+  }
+  try {
+    const parsed = JSON.parse(String(v));
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
 function rowToDevicePublic(row) {
   if (!row) return null;
   return {
@@ -80,7 +105,7 @@ export async function getLatestSensorReadingAsync(ownerUserId, deviceId) {
   if (!row) return null;
   return {
     sensorType: row.sensor_type,
-    data: JSON.parse(row.data_json),
+    data: safeParseJsonColumn(row.data_json),
     createdAt: row.created_at,
   };
 }
@@ -96,7 +121,7 @@ export async function getSensorReadingsHistoryAsync(ownerUserId, deviceId, limit
   );
   return rows.map((r) => ({
     sensorType: r.sensor_type,
-    data: JSON.parse(r.data_json),
+    data: safeParseJsonColumn(r.data_json),
     createdAt: r.created_at,
   }));
 }
@@ -130,7 +155,7 @@ export async function listSensorReadingsLogAsync(ownerUserId, deviceId, limit) {
     deviceName: r.device_name,
     deviceStatus: r.device_status,
     sensorType: r.sensor_type,
-    data: JSON.parse(r.data_json),
+    data: safeParseJsonColumn(r.data_json),
     createdAt: r.created_at,
   }));
 }
