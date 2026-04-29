@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { uuid } from '../lib/uuid.js';
 
 const MAX = 6;
 
@@ -17,7 +18,7 @@ export const useToastStore = create((set, get) => ({
   push(kind, message) {
     const text = String(message ?? '').trim().slice(0, 180);
     if (!text) return;
-    const id = crypto.randomUUID();
+    const id = uuid();
     const ms = kind === 'error' || kind === 'warning' ? 7000 : 5000;
     set((s) => ({
       toasts: [...s.toasts, { id, kind, message: text }].slice(-MAX),

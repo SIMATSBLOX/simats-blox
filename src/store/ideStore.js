@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { normalizeCategoryId } from '../blockly/toolbox.js';
 import { filterSerialMonitorOutput } from '../lib/serialDisplayFilter.js';
+import { uuid } from '../lib/uuid.js';
 
 /** @typedef {{ id: string, text: string }} SerialLine */
 /** @typedef {'esp32'} BoardId */
@@ -52,7 +53,7 @@ function trimSerialLines(lines) {
 function pushSerialTextChunk(set, chunk) {
   if (!chunk) return;
   set((s) => {
-    const next = [...s.serialLines, { id: crypto.randomUUID(), text: chunk }];
+    const next = [...s.serialLines, { id: uuid(), text: chunk }];
     const { lines, trimmed } = trimSerialLines(next);
     return {
       serialLines: lines,
@@ -170,7 +171,7 @@ export const useIdeStore = create((set, get) => ({
 
   appendLog: (level, text) =>
     set((s) => ({
-      logLines: [...s.logLines, { id: crypto.randomUUID(), level, text }],
+      logLines: [...s.logLines, { id: uuid(), level, text }],
     })),
 
   appendSerial: (text) => {

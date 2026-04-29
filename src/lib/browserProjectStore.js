@@ -2,6 +2,8 @@
  * Browser-local project list (localStorage). Not cloud sync — same browser/profile only.
  */
 
+import { uuid } from './uuid.js';
+
 const KEY = 'hardware-block-ide:browser-projects:v1';
 
 /** @returns {{ v: number, items: object[] }} */
@@ -49,7 +51,7 @@ export function getBrowserProject(id) {
  */
 export function putBrowserProject(payload) {
   const { items } = readStore();
-  const id = payload.id && typeof payload.id === 'string' ? payload.id : crypto.randomUUID();
+  const id = payload.id && typeof payload.id === 'string' ? payload.id : uuid();
   const row = {
     id,
     version: typeof payload.version === 'number' ? payload.version : 1,
