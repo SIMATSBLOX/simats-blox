@@ -1,5 +1,5 @@
 /**
- * REST + Socket.IO base URL for the Express API (SQLite backend).
+ * REST + Socket.IO base URL for the Express API.
  *
  * Local: omit VITE_API_URL — same origin; Vite proxies `/api` and `/socket.io` (vite.config.js).
  * Production (split static + API): set VITE_API_URL to the API origin only (no trailing slash).

@@ -7,9 +7,9 @@ Blockly editor for **ESP32** with **MicroPython** preview. **Connect, Upload, an
 This repo is **one website** (React) talking to **one Node server** (Express). You do **not** run two separate backends.
 
 1. **Frontend entry:** `index.html` loads **`src/main.jsx`**, which renders **`src/App.jsx`**. All UI, Blockly, and device pages live under **`src/`**. Static assets and example JSON live under **`public/`**. Vite serves the UI in dev (often port **8183**).
-2. **Backend entry:** **`server/index.js`** is what **`npm run server`** runs. That file creates the HTTP server, handles **sign-in** and **saved projects** (SQLite), and attaches the sensor API.
-3. **`server/` + `backend/src/` together:** **`server/index.js`** imports **`backend/src/sensorPlatform.js`**, which registers **device + readings routes** and **Socket.IO** on the **same** Express app. So **`server/`** = main API process and database helpers; **`backend/src/`** = sensor/readings module (routes, controllers, validation). Both run in **one process** on **one port** (default **8184**).
-4. **SQLite:** The local API stores data in **`server/data/`** (e.g. `ide.sqlite`). That folder is gitignored so your local DB is not committed.
+2. **Backend entry:** **`backend/index.js`** is what **`npm run server`** runs. That file creates the HTTP server, handles **sign-in** and **saved projects** (Supabase Postgres), and attaches the sensor API.
+3. **`backend/index.js` + `backend/src/` together:** **`backend/index.js`** imports **`backend/src/sensorPlatform.js`**, which registers **device + readings routes** and **Socket.IO** on the **same** Express app. So **`backend/index.js`** = main API process and database helpers; **`backend/src/`** = sensor/readings module (routes, controllers, validation). Both run in **one process** on **one port** (default **8184**).
+4. **Supabase Postgres:** The API stores users, projects, devices, and readings in Supabase Postgres. Use `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` in backend env configuration.
 5. **Local development commands:** See **Install & run** and **Run with account projects** below. Short version: **`npm install`**, then **`npm run dev`** (UI only) or **`npm run dev:full`** (API + UI together).
 
 ## Requirements
@@ -20,6 +20,8 @@ This repo is **one website** (React) talking to **one Node server** (Express). Y
 ## Supabase (optional — cloud auth + projects)
 
 Without **`VITE_SUPABASE_URL`** and **`VITE_SUPABASE_ANON_KEY`**, the app stays in **local-only** mode for Supabase: no crashes, no fake login. Copy **`.env.example`** to **`.env.local`**, paste your project credentials from the Supabase dashboard, then restart Vite.
+
+For backend migrations, set **`SUPABASE_DB_URL`** in your backend environment and run `npm run db:migrate`.
 
 **Dashboard checklist (next steps after creating a project):**
 
@@ -67,7 +69,7 @@ Open the URL shown (often `http://localhost:8183`).
 
 ## Run with account projects (API + UI)
 
-Saves **Open / Save / Save As** to a **SQLite** database per user when signed in. Vite proxies `/api` to the API in dev.
+Saves **Open / Save / Save As** to Supabase Postgres when signed in. Vite proxies `/api` to the API in dev.
 
 ```bash
 npm run dev:full
@@ -75,7 +77,6 @@ npm run dev:full
 
 Or two terminals: `npm run server` (port **8184**) and `npm run dev`. Then **Settings → Sign up / Sign in**.
 
-- Database file: `server/data/ide.sqlite` (Created automatically; listed in `.gitignore`.)
 - Production: set **`JWT_SECRET`** to a long random string. Optional: **`PORT`**.
 
 `npm run preview` serves static files only — start `npm run server` separately. For a static build talking to the API on another origin, set **`VITE_API_URL`** before `npm run build` (e.g. `https://api.example.com`).

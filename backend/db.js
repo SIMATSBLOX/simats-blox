@@ -1,51 +1,28 @@
-import fs from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-import mysql from 'mysql2/promise';
+import { createClient } from '@supabase/supabase-js';
 
-/** @type {import('mysql2/promise').Pool | null} */
-let pool = null;
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const schemaPath = path.join(__dirname, 'mysql_schema.sql');
+let supabaseClient = null;
 
-function getMysqlConfig() {
-  return {
-    host: process.env.MYSQL_HOST || '127.0.0.1',
-    port: Number(process.env.MYSQL_PORT || 3306),
-    user: process.env.MYSQL_USER || 'root',
-    password: process.env.MYSQL_PASSWORD || '',
-    database: process.env.MYSQL_DATABASE || 'simats_blox',
-    waitForConnections: true,
-    connectionLimit: Number(process.env.MYSQL_POOL_LIMIT || 10),
-    queueLimit: 0,
-    charset: 'utf8mb4',
-  };
+if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+  throw new Error('SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required for backend database access.');
 }
 
-export async function getDb() {
-  if (!pool) {
-    pool = mysql.createPool(getMysqlConfig());
+export function getDb() {
+  if (!supabaseClient) {
+    supabaseClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+      auth: { persistSession: false },
+      global: { headers: { 'x-application-name': 'simats-blox-backend' } },
+    });
   }
-  return pool;
+  return supabaseClient;
 }
 
 export async function initDb() {
-  const db = await getDb();
-  const schemaSql = fs.readFileSync(schemaPath, 'utf8');
-  const statements = schemaSql
-    .split(';')
-    .map((s) => s.trim())
-    .filter(Boolean);
-  for (const statement of statements) {
-    try {
-      await db.query(statement);
-    } catch (error) {
-      // Allow repeated startup on an existing schema (e.g. CREATE INDEX collisions).
-      if (error?.code === 'ER_DUP_KEYNAME') {
-        continue;
-      }
-      throw error;
-    }
+  const db = getDb();
+  const { error } = await db.from('users').select('id').limit(1);
+  if (error) {
+    console.warn('[db] Supabase schema validation:', error.message || error);
   }
 }

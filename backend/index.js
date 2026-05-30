@@ -1,4 +1,4 @@
-/** SIMATS BLOX API: Express + MySQL storage + Socket.IO. */
+/** SIMATS BLOX API: Express + Supabase Postgres storage + Socket.IO. */
 import http from 'node:http';
 import crypto from 'crypto';
 import express from 'express';
@@ -65,14 +65,21 @@ function getClientMeta(req) {
 
 async function logLoginEvent(db, { userId = null, loginInput = '', ipAddress = null, userAgent = null, status, reason = null }) {
   try {
-    await db.execute(
-      `INSERT INTO user_login_logs (user_id, login_input, ip_address, user_agent, status, reason)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [userId, String(loginInput || '').slice(0, 191), ipAddress, userAgent, status, reason],
-    );
+    const { error } = await db.from('user_login_logs').insert([
+      {
+        user_id: userId,
+        login_input: String(loginInput || '').slice(0, 191),
+        ip_address: ipAddress,
+        user_agent: userAgent,
+        status,
+        reason,
+      },
+    ]);
+    if (error) {
+      console.warn('[auth log] could not write user_login_logs:', error.message || error);
+    }
   } catch (e) {
-    // Keep auth flow resilient if log table is not yet migrated.
-    console.warn('[auth log] could not write user_login_logs:', e?.code || e?.message || e);
+    console.warn('[auth log] could not write user_login_logs:', e?.message || e);
   }
 }
 
@@ -105,26 +112,31 @@ app.post('/api/auth/signup', async (req, res) => {
 
   const id = crypto.randomUUID();
   const passwordHash = bcrypt.hashSync(password, BCRYPT_ROUNDS);
-  const createdAt = new Date();
+  const createdAt = new Date().toISOString();
 
   try {
-    await db.execute('INSERT INTO users (id, login, password_hash, created_at) VALUES (?, ?, ?, ?)', [
-      id,
-      login,
-      passwordHash,
-      createdAt,
+    const { error } = await db.from('users').insert([
+      {
+        id,
+        login,
+        password_hash: passwordHash,
+        created_at: createdAt,
+      },
     ]);
-  } catch (e) {
-    if (e?.code === 'ER_DUP_ENTRY') {
-      await logLoginEvent(db, {
-        loginInput: login,
-        ipAddress,
-        userAgent,
-        status: 'failed',
-        reason: 'signup_duplicate',
-      });
-      return res.status(409).json({ error: 'That username or email is already registered.' });
+    if (error) {
+      if (error.code === '23505' || String(error.details || '').includes('already exists')) {
+        await logLoginEvent(db, {
+          loginInput: login,
+          ipAddress,
+          userAgent,
+          status: 'failed',
+          reason: 'signup_duplicate',
+        });
+        return res.status(409).json({ error: 'That username or email is already registered.' });
+      }
+      throw error;
     }
+  } catch (e) {
     console.error(e);
     await logLoginEvent(db, {
       loginInput: login,
@@ -165,8 +177,18 @@ app.post('/api/auth/signin', async (req, res) => {
     return res.status(400).json({ error: 'Enter your username or email and password.' });
   }
 
-  const [rows] = await db.execute('SELECT id, login, password_hash FROM users WHERE login = ? LIMIT 1', [login]);
-  const row = rows[0];
+  const { data: row, error } = await db.from('users').select('id, login, password_hash').eq('login', login).maybeSingle();
+  if (error) {
+    console.error(error);
+    await logLoginEvent(db, {
+      loginInput: login,
+      ipAddress,
+      userAgent,
+      status: 'failed',
+      reason: 'signin_internal_error',
+    });
+    return res.status(500).json({ error: 'Could not sign in.' });
+  }
   if (!row || !bcrypt.compareSync(password, row.password_hash)) {
     await logLoginEvent(db, {
       loginInput: login,
@@ -196,12 +218,17 @@ app.get('/api/auth/me', authMiddleware, (req, res) => {
 
 app.get('/api/projects', authMiddleware, async (req, res) => {
   const db = await dbPromise;
-  const [rows] = await db.execute(
-    'SELECT id, project_name, description, board_id, updated_at FROM projects WHERE user_id = ? ORDER BY updated_at DESC',
-    [req.user.id],
-  );
+  const { data: rows, error } = await db
+    .from('projects')
+    .select('id, project_name, description, board_id, updated_at')
+    .eq('user_id', req.user.id)
+    .order('updated_at', { ascending: false });
+  if (error) {
+    console.error('[projects] list error', error);
+    return res.status(500).json({ error: 'Could not load projects.' });
+  }
   res.json(
-    rows.map((r) => ({
+    (rows || []).map((r) => ({
       id: r.id,
       projectName: r.project_name,
       description: r.description || '',
@@ -213,17 +240,20 @@ app.get('/api/projects', authMiddleware, async (req, res) => {
 
 app.get('/api/projects/:id', authMiddleware, async (req, res) => {
   const db = await dbPromise;
-  const [rows] = await db.execute('SELECT * FROM projects WHERE id = ? AND user_id = ? LIMIT 1', [req.params.id, req.user.id]);
-  const row = rows[0];
+  const { data: row, error } = await db
+    .from('projects')
+    .select('*')
+    .eq('id', req.params.id)
+    .eq('user_id', req.user.id)
+    .maybeSingle();
+  if (error) {
+    console.error('[projects] fetch error', error);
+    return res.status(500).json({ error: 'Could not load project.' });
+  }
   if (!row) {
     return res.status(404).json({ error: 'Project not found.' });
   }
-  let blockly;
-  try {
-    blockly = JSON.parse(row.blockly_json);
-  } catch {
-    return res.status(500).json({ error: 'Stored project data is corrupted.' });
-  }
+  const blockly = typeof row.blockly_json === 'object' ? row.blockly_json : JSON.parse(String(row.blockly_json || '{}'));
   if (!isPlainObject(blockly)) {
     return res.status(500).json({ error: 'Invalid Blockly data in storage.' });
   }
@@ -246,21 +276,25 @@ app.post('/api/projects', authMiddleware, async (req, res) => {
   const desc = typeof description === 'string' ? description.slice(0, 2000) : '';
   const board = 'esp32';
   const id = crypto.randomUUID();
-  const updatedAt = new Date();
-  let blocklyJson;
-  try {
-    blocklyJson = JSON.stringify(blockly);
-  } catch {
-    return res.status(400).json({ error: 'Could not serialize Blockly data.' });
-  }
+  const updatedAt = new Date().toISOString();
 
   const db = await dbPromise;
-  await db.execute(
-    `INSERT INTO projects (id, user_id, project_name, description, board_id, blockly_json, version, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, 1, ?)`,
-    [id, req.user.id, name, desc, board, blocklyJson, updatedAt],
-  );
-
+  const { error } = await db.from('projects').insert([
+    {
+      id,
+      user_id: req.user.id,
+      project_name: name,
+      description: desc,
+      board_id: board,
+      blockly_json: blockly,
+      version: 1,
+      updated_at: updatedAt,
+    },
+  ]);
+  if (error) {
+    console.error('[projects] create error', error);
+    return res.status(500).json({ error: 'Could not save project.' });
+  }
   res.status(201).json({ id, updatedAt });
 });
 
@@ -271,38 +305,52 @@ app.put('/api/projects/:id', authMiddleware, async (req, res) => {
     return res.status(400).json({ error: 'Missing or invalid "blockly" object.' });
   }
   const db = await dbPromise;
-  const [existingRows] = await db.execute('SELECT id FROM projects WHERE id = ? AND user_id = ? LIMIT 1', [
-    req.params.id,
-    req.user.id,
-  ]);
-  const existing = existingRows[0];
+  const { data: existing, error: existingError } = await db
+    .from('projects')
+    .select('id')
+    .eq('id', req.params.id)
+    .eq('user_id', req.user.id)
+    .maybeSingle();
+  if (existingError) {
+    console.error('[projects] check error', existingError);
+    return res.status(500).json({ error: 'Could not update project.' });
+  }
   if (!existing) {
     return res.status(404).json({ error: 'Project not found.' });
   }
   const name = String(projectName ?? 'Untitled project').slice(0, 200);
   const desc = typeof description === 'string' ? description.slice(0, 2000) : '';
   const board = 'esp32';
-  const updatedAt = new Date();
-  let blocklyJson;
-  try {
-    blocklyJson = JSON.stringify(blockly);
-  } catch {
-    return res.status(400).json({ error: 'Could not serialize Blockly data.' });
+  const updatedAt = new Date().toISOString();
+
+  const { data, error } = await db
+    .from('projects')
+    .update({
+      project_name: name,
+      description: desc,
+      board_id: board,
+      blockly_json: blockly,
+      updated_at: updatedAt,
+    })
+    .eq('id', req.params.id)
+    .eq('user_id', req.user.id)
+    .select('updated_at')
+    .maybeSingle();
+  if (error) {
+    console.error('[projects] update error', error);
+    return res.status(500).json({ error: 'Could not save project.' });
   }
-
-  await db.execute(
-    `UPDATE projects SET project_name = ?, description = ?, board_id = ?, blockly_json = ?, updated_at = ?
-     WHERE id = ? AND user_id = ?`,
-    [name, desc, board, blocklyJson, updatedAt, req.params.id, req.user.id],
-  );
-
   res.json({ id: req.params.id, updatedAt });
 });
 
 app.delete('/api/projects/:id', authMiddleware, async (req, res) => {
   const db = await dbPromise;
-  const [r] = await db.execute('DELETE FROM projects WHERE id = ? AND user_id = ?', [req.params.id, req.user.id]);
-  if (r.affectedRows === 0) {
+  const { data, error } = await db.from('projects').delete().eq('id', req.params.id).eq('user_id', req.user.id);
+  if (error) {
+    console.error('[projects] delete error', error);
+    return res.status(500).json({ error: 'Could not delete project.' });
+  }
+  if (!data || data.length === 0) {
     return res.status(404).json({ error: 'Project not found.' });
   }
   res.status(204).end();
@@ -327,6 +375,6 @@ async function start() {
 }
 
 start().catch((error) => {
-  console.error('[startup] Failed to initialize MySQL backend:', error?.message || error);
+  console.error('[startup] Failed to initialize backend:', error?.message || error);
   process.exit(1);
 });

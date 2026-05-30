@@ -1,5 +1,5 @@
 /**
- * Sensor data layer: MySQL tables + REST + Socket.IO.
+ * Sensor data layer: Supabase Postgres + REST + Socket.IO.
  * Mounted on the main SIMATS BLOX HTTP server (shared port with auth/projects API).
  */
 import { Server } from 'socket.io';
@@ -51,7 +51,7 @@ export function setupSensorPlatform(httpServer, app) {
 
   setSocketIO(io);
 
-  console.log('[sensor] MySQL: sensor_devices, sensor_readings');
+  console.log('[sensor] Supabase: sensor_devices, sensor_readings');
   console.log('[sensor] Dashboard auth: Express JWT — REST + Socket');
   console.log('[sensor] POST /api/readings uses x-device-key (unchanged)');
   console.log(`[sensor] Socket.IO: join user:<sub> on connect; CORS origin: ${clientOrigin}`);

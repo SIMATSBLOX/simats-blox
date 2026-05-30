@@ -27,7 +27,6 @@ pnpm-debug.log*
 
 # Local backend data/migration files (keep on disk; not committed)
 backend/data/
-server/data/
 
 # OS junk
 .DS_Store
