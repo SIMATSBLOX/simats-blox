@@ -1,3 +1,5 @@
+import './loadRootEnv.js';
+
 /**
  * Single JWT signing secret for auth + sensor Socket.IO + device REST guards.
  * Set JWT_SECRET in production — must match everywhere this process loads.

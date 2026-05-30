@@ -210,7 +210,7 @@ export default function SettingsModal({ open, onClose }) {
                         <p>
                           Add <code className="rounded bg-black/35 px-1 font-mono text-[10px]">VITE_SUPABASE_URL</code> and{' '}
                           <code className="rounded bg-black/35 px-1 font-mono text-[10px]">VITE_SUPABASE_ANON_KEY</code> to{' '}
-                          <code className="rounded bg-black/35 px-1 font-mono text-[10px]">.env.local</code>, restart Vite,
+                          <code className="rounded bg-black/35 px-1 font-mono text-[10px]">.env</code>, restart Vite,
                           and create <code className="rounded bg-black/35 px-1 font-mono text-[10px]">ide_projects</code> in
                           Supabase (see README).
                         </p>

@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import bcrypt from 'bcryptjs';
 import * as sensorStore from '../sensorStore.js';
 
 function timingSafeEqualStrings(a, b) {
@@ -13,18 +14,41 @@ function timingSafeEqualStrings(a, b) {
 }
 
 /**
+ * Secure device authentication using:
+ * 1. api_key_lookup (SHA256 hash) for efficient device lookup
+ * 2. bcrypt.compare() for verifying plaintext key against stored hash
  * @returns {import('./sensorRepositoryContract.js').SensorRepository}
  */
 export function createSupabaseSensorRepository() {
   return {
     async authenticateDevice(deviceIdTrimmed, apiKeyTrimmed) {
-      const row = await sensorStore.getSensorDeviceRowByDeviceIdAsync(deviceIdTrimmed);
+      // Compute the api_key_lookup hash from the provided key for initial lookup
+      const apiKeyLookup = crypto.createHash('sha256').update(apiKeyTrimmed).digest('hex').slice(0, 64);
+      
+      // Look up device by api_key_lookup (fast index lookup)
+      const row = await sensorStore.getSensorDeviceRowByApiKeyLookupAsync(apiKeyLookup);
       if (!row) {
         return { ok: false, error: 'device_not_found' };
       }
-      if (!timingSafeEqualStrings(row.api_key, apiKeyTrimmed)) {
+      
+      // Verify the plaintext key against the bcrypt hash
+      let keyMatches = false;
+      try {
+        keyMatches = await bcrypt.compare(apiKeyTrimmed, row.api_key_hash);
+      } catch (e) {
+        console.error('[authenticateDevice] bcrypt compare failed:', e);
         return { ok: false, error: 'invalid_key' };
       }
+      
+      if (!keyMatches) {
+        return { ok: false, error: 'invalid_key' };
+      }
+      
+      // Verify the device_id matches for additional security (timing-safe comparison)
+      if (!timingSafeEqualStrings(row.device_id, deviceIdTrimmed)) {
+        return { ok: false, error: 'device_not_found' };
+      }
+      
       return {
         ok: true,
         sensorDevice: {

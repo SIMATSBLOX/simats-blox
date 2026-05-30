@@ -1,4 +1,5 @@
 /** SIMATS BLOX API: Express + Supabase Postgres storage + Socket.IO. */
+import './loadRootEnv.js';
 import http from 'node:http';
 import crypto from 'crypto';
 import express from 'express';

@@ -6,10 +6,10 @@ Blockly editor for **ESP32** with **MicroPython** preview. **Connect, Upload, an
 
 This repo is **one website** (React) talking to **one Node server** (Express). You do **not** run two separate backends.
 
-1. **Frontend entry:** `index.html` loads **`src/main.jsx`**, which renders **`src/App.jsx`**. All UI, Blockly, and device pages live under **`src/`**. Static assets and example JSON live under **`public/`**. Vite serves the UI in dev (often port **8183**).
+1. **Frontend entry:** `index.html` loads **`src/main.jsx`**, which renders **`src/App.jsx`**. All UI, Blockly, and device pages live under **`src/`**. Static assets and example JSON live under **`public/`**. Vite serves the UI in dev (often port **5173**).
 2. **Backend entry:** **`backend/index.js`** is what **`npm run server`** runs. That file creates the HTTP server, handles **sign-in** and **saved projects** (Supabase Postgres), and attaches the sensor API.
 3. **`backend/index.js` + `backend/src/` together:** **`backend/index.js`** imports **`backend/src/sensorPlatform.js`**, which registers **device + readings routes** and **Socket.IO** on the **same** Express app. So **`backend/index.js`** = main API process and database helpers; **`backend/src/`** = sensor/readings module (routes, controllers, validation). Both run in **one process** on **one port** (default **8184**).
-4. **Supabase Postgres:** The API stores users, projects, devices, and readings in Supabase Postgres. Use `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` in backend env configuration.
+4. **Supabase Postgres:** The API stores users, projects, devices, and readings in Supabase Postgres. Use `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and `SUPABASE_DB_URL` in the root `.env`.
 5. **Local development commands:** See **Install & run** and **Run with account projects** below. Short version: **`npm install`**, then **`npm run dev`** (UI only) or **`npm run dev:full`** (API + UI together).
 
 ## Requirements
@@ -19,13 +19,15 @@ This repo is **one website** (React) talking to **one Node server** (Express). Y
 
 ## Supabase (optional — cloud auth + projects)
 
-Without **`VITE_SUPABASE_URL`** and **`VITE_SUPABASE_ANON_KEY`**, the app stays in **local-only** mode for Supabase: no crashes, no fake login. Copy **`.env.example`** to **`.env.local`**, paste your project credentials from the Supabase dashboard, then restart Vite.
+This project uses one local environment file: copy **`.env.example`** to **`.env`** in the repo root. Vite reads the root `.env` for `VITE_*` variables, and `npm run server` / `npm run db:migrate` load the same root `.env` for backend variables.
 
-For backend migrations, set **`SUPABASE_DB_URL`** in your backend environment and run `npm run db:migrate`.
+Without **`VITE_SUPABASE_URL`** and **`VITE_SUPABASE_ANON_KEY`**, the app stays in **local-only** mode for Supabase: no crashes, no fake login. Paste your Supabase Project URL and anon key into root `.env`, then restart Vite.
+
+For backend migrations, set **`SUPABASE_DB_URL`** in root `.env` and run `npm run db:migrate`.
 
 **Dashboard checklist (next steps after creating a project):**
 
-1. **Project Settings → API** — copy **Project URL** and **anon public** key into `.env.local`.
+1. **Project Settings → API** — copy **Project URL** and **anon public** key into root `.env`.
 2. **Authentication → Providers** — enable **Email** (or your chosen provider).
 3. **SQL Editor** — run the following (table name must match `ide_projects` — see `src/lib/projectCloudSchema.js`):
 
@@ -65,7 +67,7 @@ npm install
 npm run dev
 ```
 
-Open the URL shown (often `http://localhost:8183`).
+Open the URL shown (often `http://localhost:5173`).
 
 ## Run with account projects (API + UI)
 
@@ -77,9 +79,36 @@ npm run dev:full
 
 Or two terminals: `npm run server` (port **8184**) and `npm run dev`. Then **Settings → Sign up / Sign in**.
 
-- Production: set **`JWT_SECRET`** to a long random string. Optional: **`PORT`**.
+- Production: set **`JWT_SECRET`** to a long random string. Optional: **`PORT`**. On Render, `PORT`** is supplied automatically, so you only need to set it locally if required.
 
-`npm run preview` serves static files only — start `npm run server` separately. For a static build talking to the API on another origin, set **`VITE_API_URL`** before `npm run build` (e.g. `https://api.example.com`).
+### Environment Variables
+
+Root `.env.example` is the single source of truth for local development:
+
+- Backend: `PORT`, `CLIENT_ORIGIN`, `JWT_SECRET`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_DB_URL`
+- Frontend: `VITE_API_URL`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`
+
+For local `npm run dev:full`, set `CLIENT_ORIGIN=http://localhost:5173`. If you leave `VITE_API_URL` empty locally, Vite proxies `/api` and `/socket.io` to the backend on port `8184`.
+
+### Render Backend
+
+Set the following values in Render for the backend service:
+
+- `CLIENT_ORIGIN` set to your exact Vercel frontend URL
+- `SUPABASE_URL`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `JWT_SECRET`
+- `SUPABASE_DB_URL` (optional, only needed for migration scripts)
+
+### Vercel Frontend
+
+Set the following values in Vercel for the frontend project:
+
+- `VITE_API_URL` set to your Render backend URL
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_ANON_KEY`
+
+`npm run preview` serves static files only — start `npm run server` separately. For a static build talking to the API on another origin, set **`VITE_API_URL`** before `npm run build`.
 
 Clean reinstall:
 

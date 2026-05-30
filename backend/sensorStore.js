@@ -1,8 +1,23 @@
 /**
  * Sensor devices + readings in Supabase Postgres (`sensor_devices`, `sensor_readings`).
+ * API key security: bcrypt hashing with api_key_lookup for efficient lookup.
  */
 import crypto from 'node:crypto';
+import bcrypt from 'bcryptjs';
 import { getDb } from './db.js';
+
+const BCRYPT_ROUNDS = 12;
+
+/**
+ * Helper to generate a new API key and compute its hash and lookup value.
+ * @returns {{ apiKey: string; apiKeyHash: string; apiKeyLookup: string }}
+ */
+function generateApiKeyPair() {
+  const apiKey = crypto.randomBytes(32).toString('hex');
+  const apiKeyHash = bcrypt.hashSync(apiKey, BCRYPT_ROUNDS);
+  const apiKeyLookup = crypto.createHash('sha256').update(apiKey).digest('hex').slice(0, 64);
+  return { apiKey, apiKeyHash, apiKeyLookup };
+}
 
 /**
  * Keep history endpoints resilient and avoid 500s from `JSON.parse` on non-objects.
@@ -49,6 +64,21 @@ export async function getSensorDeviceRowByDeviceIdAsync(deviceId) {
   return data;
 }
 
+/**
+ * Get device by api_key_lookup for secure authentication.
+ * Returns the full row including api_key_hash for bcrypt verification.
+ */
+export async function getSensorDeviceRowByApiKeyLookupAsync(apiKeyLookup) {
+  const db = await getDb();
+  const { data, error } = await db
+    .from('sensor_devices')
+    .select('*')
+    .eq('api_key_lookup', String(apiKeyLookup ?? '').trim())
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
 export async function listSensorDevicesForUserAsync(ownerUserId) {
   const db = await getDb();
   const { data, error } = await db
@@ -75,6 +105,8 @@ export async function insertSensorDeviceAsync(p) {
 
   const id = crypto.randomUUID();
   const now = new Date().toISOString();
+  const { apiKey, apiKeyHash, apiKeyLookup } = generateApiKeyPair();
+  
   const { data, error } = await db
     .from('sensor_devices')
     .insert([
@@ -85,7 +117,8 @@ export async function insertSensorDeviceAsync(p) {
         name: p.name,
         sensor_type: p.sensorType,
         location: p.location,
-        api_key: p.apiKey,
+        api_key_hash: apiKeyHash,
+        api_key_lookup: apiKeyLookup,
         status: 'offline',
         last_seen_at: null,
         created_at: now,
@@ -95,7 +128,7 @@ export async function insertSensorDeviceAsync(p) {
     .select('*')
     .single();
   if (error) throw error;
-  return { ok: true, device: rowToDevicePublic(data), apiKey: p.apiKey };
+  return { ok: true, device: rowToDevicePublic(data), apiKey };
 }
 
 export async function getSensorDeviceForUserAsync(ownerUserId, deviceId) {
@@ -239,12 +272,12 @@ export async function regenerateSensorDeviceApiKeyAsync(ownerUserId, deviceIdTri
   if (rowError) throw rowError;
   if (!row) return { ok: false };
 
-  const newKey = crypto.randomBytes(32).toString('hex');
+  const { apiKey, apiKeyHash, apiKeyLookup } = generateApiKeyPair();
   const now = new Date().toISOString();
   const { error: updateError } = await db
     .from('sensor_devices')
-    .update({ api_key: newKey, updated_at: now })
+    .update({ api_key_hash: apiKeyHash, api_key_lookup: apiKeyLookup, updated_at: now })
     .eq('id', row.id);
   if (updateError) throw updateError;
-  return { ok: true, apiKey: newKey };
+  return { ok: true, apiKey };
 }

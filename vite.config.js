@@ -21,9 +21,9 @@ export default defineConfig({
     },
   },
   server: {
-    port: 8183,
-    strictPort: false, // if 8183 is busy, Vite tries the next free port — use the URL it prints
-    /** Listen on all interfaces so phones / other laptops on the same Wi‑Fi can open http://<your-LAN-IP>:8183 */
+    port: 5173,
+    strictPort: false, // if 5173 is busy, Vite tries the next free port — use the URL it prints
+    /** Listen on all interfaces so phones / other laptops on the same Wi‑Fi can open http://<your-LAN-IP>:5173 */
     host: true,
     proxy: {
       '/api': {
