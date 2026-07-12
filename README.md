@@ -132,3 +132,4 @@ npm run preview   # optional: test dist/ locally
 Unpack → `npm install` → `npm run dev` or `npm run build`.
 
 **Examples:** Toolbar **Examples** loads JSON from `public/examples/index.json` and the listed `.json` files. Regenerate everything (including the manifest) with `npm run build:examples` after changing blocks or the generator script.
+© 2026 Mano C. Developed as a personal academic project.
